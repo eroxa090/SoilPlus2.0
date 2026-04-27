@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Koshkar-muiiz ("ram's horn") — a core motif of Kazakh ornament.
+  Drawn as a repeating tile so it can be used as a CSS background.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  <defs>
+    <symbol id="horn" viewBox="0 0 80 80">
+      <!-- left horn -->
+      <path d="M40 40
+               C 40 20, 24 14, 16 24
+               S 12 48, 28 46"
+            fill="none" stroke="#d4af37" stroke-width="1.6" stroke-linecap="round"/>
+      <!-- right horn (mirror) -->
+      <path d="M40 40
+               C 40 20, 56 14, 64 24
+               S 68 48, 52 46"
+            fill="none" stroke="#d4af37" stroke-width="1.6" stroke-linecap="round"/>
+      <!-- central stem / tulip -->
+      <path d="M40 40 V 64 M34 58 L40 64 L46 58"
+            fill="none" stroke="#d4af37" stroke-width="1.4" stroke-linecap="round"/>
+      <!-- terminal dots -->
+      <circle cx="28" cy="46" r="1.6" fill="#f5e6ca"/>
+      <circle cx="52" cy="46" r="1.6" fill="#f5e6ca"/>
+      <circle cx="40" cy="18" r="1.2" fill="#f5e6ca"/>
+    </symbol>
+  </defs>
+
+  <g opacity="0.9">
+    <use href="#horn"  x="0"  y="0"  />
+    <use href="#horn"  x="80" y="0"  transform="rotate(180 120 40)"/>
+    <use href="#horn"  x="0"  y="80" transform="rotate(180 40 120)"/>
+    <use href="#horn"  x="80" y="80" />
+  </g>
+</svg>
