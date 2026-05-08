@@ -26,6 +26,7 @@ next-env.d.ts
 DEPLOY.md
 SoilPlus_Documentation*.docx
 *.docx
+*.pdf
 
 # Random local artifacts (screenshots, test images, drafts)
 test.jpeg
@@ -37,3 +38,6 @@ E_WEB_*.png
 Снимок экрана*.png
 Screen Shot*.png
 Screenshot*.png
+20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.jpg
+20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.jpeg
+20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.png
