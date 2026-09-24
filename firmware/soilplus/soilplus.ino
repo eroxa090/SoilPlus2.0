@@ -1,3 +1,4 @@
+
 /*
  * =====================================================================
  *  SoilPlus  —  WRO 2026 Future Innovators  ·  "Robots Meet Culture"
@@ -34,6 +35,7 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
 
 /* =====================================================================
  *  1)  WI-FI — point this at your phone's hotspot.
@@ -58,32 +60,41 @@ constexpr float VREF    = 3.30f;   // ESP32 ADC ref with 11 dB atten
 constexpr int   ADC_RES = 4095;    // 12-bit
 
 /* =====================================================================
- *  4)  pH — TWO-POINT CALIBRATION
+ *  4)  CALIBRATION — LIVE, STORED IN FLASH (NVS)
  *  -------------------------------------------------------------------
- *  HOW TO CALIBRATE (one-time, ~5 min):
- *    1. Plug probe in pH 7.00 buffer. Watch Serial; wait 30 s for it
- *       to settle. Note the "[CAL] pH raw voltage = X.XXX V" line.
- *       Put that number into PH_V7 below.
- *    2. Rinse with distilled water. Plug into pH 4.00 buffer.
- *       Wait 30 s. Put the voltage into PH_V4.
- *    3. Re-flash. Done.
+ *  These are no longer compile-time constants. They load from the
+ *  ESP32's non-volatile store on boot and are edited at runtime with
+ *  serial commands (see section 9c) — no re-flash needed. The values
+ *  below are only DEFAULTS, used until you calibrate the first time.
  *
- *  WHY it works:
- *    pH(v) = 7 + (V7 − v) × 3 / (V7 − V4)
+ *  INTERACTIVE CALIBRATION (open Serial Monitor @115200, newline mode):
+ *    pH   : put probe in pH 7.00 buffer, wait 30 s, type:  cal ph7
+ *           rinse, put in pH 4.00 buffer, wait 30 s, type: cal ph4
+ *    TDS  : put probe in a known solution, wait 30 s, type:
+ *           cal tds 707     (707 = the ppm printed on your standard)
+ *    Moist: probe in dry air → cal moistdry ; in water → cal moistwet
+ *    Also : cal show   (print current values) · cal reset (defaults)
+ *  Every command saves to flash immediately and survives reboot.
+ *
+ *  pH math:  pH(v) = 7 + (V7 − v) × 3 / (V7 − V4)
  *    → at v = V7 gives pH 7; at v = V4 gives pH 4; linear between.
+ *  TDS math: raw DFRobot polynomial × tdsFactor  (factor set by
+ *    'cal tds <ppm>' so the known solution reads exactly <ppm>).
  * =====================================================================*/
-constexpr float PH_V7 = 2.500f;   // voltage in pH 7.00 buffer (V)
-constexpr float PH_V4 = 3.050f;   // voltage in pH 4.00 buffer (V)
+constexpr float DEFAULT_PH_V7      = 2.500f;   // voltage in pH 7.00 buffer (V)
+constexpr float DEFAULT_PH_V4      = 3.050f;   // voltage in pH 4.00 buffer (V)
+constexpr float DEFAULT_TDS_FACTOR = 1.000f;   // multiplier on the polynomial
+constexpr int   DEFAULT_MOIST_DRY  = 3100;     // ADC raw in dry air
+constexpr int   DEFAULT_MOIST_WET  = 1200;     // ADC raw fully submerged
 
-/* =====================================================================
- *  5)  CAPACITIVE MOISTURE — RAW ENDPOINTS
- *  -------------------------------------------------------------------
- *  1. Hold probe in dry air. Watch "[CAL] moist raw = XXXX". → MOIST_DRY
- *  2. Submerge probe in water (not past the PCB). → MOIST_WET
- *  Typical: dry ≈ 3000–3200, wet ≈ 1100–1400.
- * =====================================================================*/
-constexpr int MOIST_DRY = 3100;
-constexpr int MOIST_WET = 1200;
+// Live values (loaded from NVS in setup(), edited via serial):
+float phV7      = DEFAULT_PH_V7;
+float phV4      = DEFAULT_PH_V4;
+float tdsFactor = DEFAULT_TDS_FACTOR;
+int   moistDry  = DEFAULT_MOIST_DRY;
+int   moistWet  = DEFAULT_MOIST_WET;
+
+Preferences prefs;   // NVS namespace "soilplus"
 
 /* =====================================================================
  *  6)  TIMING
@@ -145,9 +156,9 @@ inline float adcToVolts(int raw) {
  * =====================================================================*/
 
 float computePH(float volts) {
-  const float span = PH_V7 - PH_V4;                // volts per 3 pH units
+  const float span = phV7 - phV4;                  // volts per 3 pH units
   if (span == 0.0f) return 7.0f;                   // guard
-  float ph = 7.0f + (PH_V7 - volts) * 3.0f / span;
+  float ph = 7.0f + (phV7 - volts) * 3.0f / span;
   if (ph < 0.0f)  ph = 0.0f;
   if (ph > 14.0f) ph = 14.0f;
   return ph;
@@ -158,18 +169,29 @@ int computeTDS(float volts, float waterTempC) {
   float comp = 1.0f + 0.02f * (waterTempC - 25.0f);
   if (comp <= 0.01f) comp = 1.0f;
   float v = volts / comp;
-  // DFRobot polynomial, 0.5× conversion factor (ppm vs µS/cm)
+  // DFRobot polynomial, 0.5× conversion factor (ppm vs µS/cm),
+  // then × tdsFactor from the one-point 'cal tds <ppm>' calibration.
   float tds = (133.42f * v * v * v
              - 255.86f * v * v
-             + 857.39f * v) * 0.5f;
+             + 857.39f * v) * 0.5f * tdsFactor;
   if (tds < 0.0f)    tds = 0.0f;
   if (tds > 5000.0f) tds = 5000.0f;
   return (int)tds;
 }
 
+// Raw polynomial TDS with factor forced to 1.0 — used by the
+// calibrator to work out what factor makes a known solution read right.
+int computeTDSraw(float volts, float waterTempC) {
+  float saved = tdsFactor;
+  tdsFactor = 1.0f;
+  int r = computeTDS(volts, waterTempC);
+  tdsFactor = saved;
+  return r;
+}
+
 int computeMoisture(int raw) {
   // DRY endpoint is a higher ADC (less capacitance) than WET.
-  long pct = ((long)(MOIST_DRY - raw) * 100L) / (MOIST_DRY - MOIST_WET);
+  long pct = ((long)(moistDry - raw) * 100L) / (moistDry - moistWet);
   if (pct < 0)   pct = 0;
   if (pct > 100) pct = 100;
   return (int)pct;
@@ -203,6 +225,137 @@ Reading takeReading() {
   r.moist    = computeMoisture(r.moistRaw);
 
   return r;
+}
+
+/* =====================================================================
+ *  9b) CALIBRATION PERSISTENCE  (NVS / flash)
+ * =====================================================================*/
+void loadCalibration() {
+  prefs.begin("soilplus", /*readOnly=*/true);
+  phV7      = prefs.getFloat("phV7",   DEFAULT_PH_V7);
+  phV4      = prefs.getFloat("phV4",   DEFAULT_PH_V4);
+  tdsFactor = prefs.getFloat("tdsFac", DEFAULT_TDS_FACTOR);
+  moistDry  = prefs.getInt  ("mDry",   DEFAULT_MOIST_DRY);
+  moistWet  = prefs.getInt  ("mWet",   DEFAULT_MOIST_WET);
+  prefs.end();
+}
+
+void saveCalibration() {
+  prefs.begin("soilplus", /*readOnly=*/false);
+  prefs.putFloat("phV7",   phV7);
+  prefs.putFloat("phV4",   phV4);
+  prefs.putFloat("tdsFac", tdsFactor);
+  prefs.putInt  ("mDry",   moistDry);
+  prefs.putInt  ("mWet",   moistWet);
+  prefs.end();
+}
+
+void printCalibration() {
+  Serial.println("---- SoilPlus calibration ----");
+  Serial.printf ("  pH   V7 = %.3f V   V4 = %.3f V   (span %.3f V)\n",
+                 phV7, phV4, phV7 - phV4);
+  Serial.printf ("  TDS  factor = %.4f\n", tdsFactor);
+  Serial.printf ("  Moist dry = %d   wet = %d\n", moistDry, moistWet);
+  Serial.println("  Commands: cal ph7 | cal ph4 | cal tds <ppm>");
+  Serial.println("            cal moistdry | cal moistwet | cal show | cal reset");
+  Serial.println();
+}
+
+/* =====================================================================
+ *  9c) SERIAL CALIBRATION CONSOLE
+ *      Type commands into the Arduino Serial Monitor (newline ending).
+ *      Each command samples the probe live and saves to flash at once.
+ * =====================================================================*/
+void handleSerialCommand(String cmd) {
+  cmd.trim();
+  cmd.toLowerCase();
+  if (cmd.length() == 0) return;
+
+  if (cmd == "cal show" || cmd == "show") {
+    printCalibration();
+    return;
+  }
+
+  if (cmd == "cal reset") {
+    phV7 = DEFAULT_PH_V7;  phV4 = DEFAULT_PH_V4;
+    tdsFactor = DEFAULT_TDS_FACTOR;
+    moistDry = DEFAULT_MOIST_DRY;  moistWet = DEFAULT_MOIST_WET;
+    saveCalibration();
+    Serial.println("[CAL] Reset to defaults & saved.");
+    printCalibration();
+    return;
+  }
+
+  if (cmd == "cal ph7") {
+    float v = adcToVolts(readAnalogFiltered(PIN_PH));
+    phV7 = v;  saveCalibration();
+    Serial.printf("[CAL] pH 7.00 point set: V7 = %.3f V (saved)\n", v);
+    if (phV7 >= phV4)
+      Serial.println("[CAL] WARNING: V7 >= V4. In acid the voltage should be HIGHER. Check probe/wiring.");
+    return;
+  }
+
+  if (cmd == "cal ph4") {
+    float v = adcToVolts(readAnalogFiltered(PIN_PH));
+    phV4 = v;  saveCalibration();
+    Serial.printf("[CAL] pH 4.00 point set: V4 = %.3f V (saved)\n", v);
+    if (phV7 >= phV4)
+      Serial.println("[CAL] WARNING: V7 >= V4. In acid the voltage should be HIGHER. Check probe/wiring.");
+    return;
+  }
+
+  if (cmd.startsWith("cal tds")) {
+    String arg = cmd.substring(7);  // after "cal tds"
+    arg.trim();
+    float knownPPM = arg.toFloat();
+    if (knownPPM <= 0.0f) {
+      Serial.println("[CAL] Usage: cal tds <ppm>   e.g.  cal tds 707");
+      return;
+    }
+    float t = readTemperatureC();
+    float v = adcToVolts(readAnalogFiltered(PIN_TDS));
+    int rawPPM = computeTDSraw(v, t);
+    if (rawPPM <= 0) {
+      Serial.println("[CAL] Raw TDS reading is ~0. Is the probe in solution? Aborted.");
+      return;
+    }
+    tdsFactor = knownPPM / (float)rawPPM;
+    saveCalibration();
+    Serial.printf("[CAL] TDS point set: solution=%.0f ppm, raw=%d ppm @ %.1f C, V=%.3f\n",
+                  knownPPM, rawPPM, t, v);
+    Serial.printf("[CAL] tdsFactor = %.4f (saved)\n", tdsFactor);
+    return;
+  }
+
+  if (cmd == "cal moistdry") {
+    moistDry = readAnalogFiltered(PIN_MOISTURE);
+    saveCalibration();
+    Serial.printf("[CAL] Moisture DRY set: raw = %d (saved)\n", moistDry);
+    return;
+  }
+
+  if (cmd == "cal moistwet") {
+    moistWet = readAnalogFiltered(PIN_MOISTURE);
+    saveCalibration();
+    Serial.printf("[CAL] Moisture WET set: raw = %d (saved)\n", moistWet);
+    return;
+  }
+
+  Serial.printf("[CAL] Unknown command: \"%s\"  — type 'cal show' for help.\n",
+                cmd.c_str());
+}
+
+void pollSerialConsole() {
+  static String line;
+  while (Serial.available()) {
+    char c = (char)Serial.read();
+    if (c == '\n' || c == '\r') {
+      if (line.length()) { handleSerialCommand(line); line = ""; }
+    } else {
+      line += c;
+      if (line.length() > 40) line = "";  // runaway guard
+    }
+  }
 }
 
 /* =====================================================================
@@ -245,11 +398,14 @@ void connectWiFi() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(400);
     Serial.print('.');
-    if (millis() - t0 > 20000) {
-      Serial.println("\n[WiFi] Timeout — retrying...");
-      WiFi.disconnect();
-      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-      t0 = millis();
+    // Give up after ~18 s so the main loop (and the serial calibration
+    // console) can run even with no hotspot around. loop() keeps trying
+    // to reconnect passively in the background.
+    if (millis() - t0 > 18000) {
+      Serial.println("\n[WiFi] Not connected — continuing WITHOUT Wi-Fi.");
+      Serial.println("[WiFi] Sensors + serial calibration still work.");
+      Serial.println("[WiFi] Turn on the hotspot to stream to the website.");
+      return;
     }
   }
 
@@ -280,6 +436,10 @@ void setup() {
   tempSensor.begin();
   tempSensor.setResolution(12);
 
+  loadCalibration();
+  Serial.println("[CAL] Calibration loaded from flash:");
+  printCalibration();
+
   connectWiFi();
 
   webSocket.begin();
@@ -292,6 +452,7 @@ void setup() {
 
 void loop() {
   webSocket.loop();
+  pollSerialConsole();   // listen for 'cal ...' commands
 
   static uint32_t lastBroadcast = 0;
   static uint32_t lastDebug     = 0;
@@ -331,15 +492,16 @@ void loop() {
                    r.moist, r.moistRaw);
     Serial.printf ("  Clients  : %d           RSSI=%d dBm\n",
                    webSocket.connectedClients(), WiFi.RSSI());
-    Serial.printf ("  [CAL] paste these into the firmware header if you calibrate now:\n");
-    Serial.printf ("        pH voltage = %.3f V    moist raw = %d\n",
-                   r.phVolts, r.moistRaw);
+    Serial.printf ("  [CAL] live: pH V=%.3f  TDS V=%.3f  moist raw=%d\n",
+                   r.phVolts, r.tdsVolts, r.moistRaw);
+    Serial.printf ("  [CAL] to calibrate type: cal ph7 | cal ph4 | cal tds <ppm> | cal show\n");
     Serial.println();
   }
 
-  /* ----- Passive Wi-Fi recovery ----- */
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WiFi] Lost connection — reconnecting...");
-    connectWiFi();
+  /* ----- Passive Wi-Fi recovery (non-blocking, every 30 s) ----- */
+  static uint32_t lastWifiTry = 0;
+  if (WiFi.status() != WL_CONNECTED && now - lastWifiTry > 30000) {
+    lastWifiTry = now;
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);   // fire-and-forget; never blocks
   }
 }

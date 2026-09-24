@@ -10,11 +10,15 @@ import { NextResponse, type NextRequest } from "next/server";
  * cookie would fail.
  */
 
+/**
+ * Public on purpose: /connect, /chat and /irrigation. They hold no personal
+ * data — the device stream is a direct browser↔ESP32 WebSocket and the
+ * calculators are pure functions — so gating them only cost us visitors who
+ * bounced at the login wall. It also keeps the live device demo working when
+ * the database is asleep, since none of the three touches Supabase.
+ */
 const GATED = [
   "/dashboard",
-  "/irrigation",
-  "/chat",
-  "/connect",
 ];
 
 const ADMIN = ["/admin"];
@@ -40,9 +44,6 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
-    "/irrigation/:path*",
-    "/chat/:path*",
-    "/connect/:path*",
     "/admin/:path*",
   ],
 };

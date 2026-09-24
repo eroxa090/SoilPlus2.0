@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const securityHeaders = [
   // Prevent MIME sniffing
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -26,6 +31,9 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Pin the workspace root to this project so Next.js doesn't pick up a stray
+  // lockfile in a parent directory when inferring the tracing root.
+  outputFileTracingRoot: __dirname,
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion", "recharts"],
   },
