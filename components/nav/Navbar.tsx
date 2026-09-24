@@ -19,18 +19,20 @@ import SensorPulse from "./SensorPulse";
 type LinkDef = { href: string; label: string; owner?: boolean };
 
 const PUBLIC_LINKS: LinkDef[] = [
-  { href: "/diagnose", label: "Diagnose" },
-  { href: "/forecast", label: "Forecast" },
-  { href: "/weather",  label: "Weather"  },
-  { href: "/heritage", label: "Heritage" },
-  { href: "/shop",     label: "Shop"     },
+  { href: "/chat",       label: "AI Agronomist" },
+  { href: "/irrigation", label: "Irrigation" },
+  { href: "/diagnose",   label: "Diagnose" },
+  { href: "/forecast",   label: "Forecast" },
+  { href: "/weather",    label: "Weather"  },
+  { href: "/connect",    label: "Connect"  },
+  { href: "/heritage",   label: "Heritage" },
+  { href: "/shop",       label: "Shop"     },
 ];
 
+// Only the dashboard still needs a device owner — it renders that owner's
+// own plots. Everything else works for an anonymous visitor.
 const OWNER_LINKS: LinkDef[] = [
   { href: "/dashboard",  label: "Dashboard",   owner: true },
-  { href: "/irrigation", label: "Irrigation",  owner: true },
-  { href: "/chat",       label: "AI Agronomist", owner: true },
-  { href: "/connect",    label: "Connect",     owner: true },
 ];
 
 export default function Navbar() {
