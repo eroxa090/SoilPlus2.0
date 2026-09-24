@@ -85,7 +85,8 @@ export async function POST(req: Request) {
         temperature: 0.25,
         // 2.5-flash is a thinking model — part of the budget is spent on
         // hidden reasoning, so we give it generous room for JSON + thoughts.
-        maxOutputTokens: 4096,
+        // Must clear the model's ~2.1-2.3k thinking budget before any output.
+        maxOutputTokens: 8192,
         responseMimeType: "application/json",
       },
     });

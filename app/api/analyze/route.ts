@@ -140,7 +140,8 @@ export async function POST(req: Request) {
       generationConfig: {
         temperature: 0.65,
         // 2.5-flash burns part of the budget on hidden thinking tokens.
-        maxOutputTokens: 1500,
+        // Must clear the model's ~2.1-2.3k thinking budget before any output.
+        maxOutputTokens: 8192,
         responseMimeType: "application/json",
       },
     });

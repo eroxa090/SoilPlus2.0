@@ -179,7 +179,9 @@ export async function POST(req: Request) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
-      generationConfig: { temperature: 0.55, maxOutputTokens: 2000 },
+      // 2.5-flash thinks for ~2.1-2.3k tokens before answering, so a 2000-token
+      // ceiling truncated replies mid-word.
+      generationConfig: { temperature: 0.55, maxOutputTokens: 8192 },
       systemInstruction: systemPrompt(reading, crop, diag, body.areaM2),
     });
 

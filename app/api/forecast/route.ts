@@ -115,7 +115,12 @@ export async function POST(req: Request) {
       model: "gemini-2.5-flash",
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 2200,
+        // gemini-2.5-flash spends ~2.1-2.3k tokens thinking before it emits a
+        // single character, so anything near that budget leaves nothing for the
+        // answer: at 2200 the response came back MAX_TOKENS with the JSON cut
+        // off mid-array, and every forecast silently fell through to the
+        // offline heuristic below.
+        maxOutputTokens: 8192,
         responseMimeType: "application/json",
       },
     });
