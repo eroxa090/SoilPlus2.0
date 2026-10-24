@@ -29,8 +29,8 @@ const config: Config = {
           900: "#2A1F14",
           700: "#46382A",
           500: "#6B5A45",
-          400: "#86745C",
-          300: "#A8967B",
+          400: "#72634E", // ≥4.5:1 on paper: small labels must survive a projector
+          300: "#8D7E67", // ≥3:1 on paper: decorative / large text only
           200: "#CDBB9C",
           100: "#DFD0B2",
         },
@@ -60,7 +60,7 @@ const config: Config = {
           50:  "#FAF0D9",
           100: "#F2DCA6",
           500: "#C38A1E",
-          600: "#9A6B12",
+          600: "#865D10", // ≥4.5:1 on paper for warning text
         },
         // Inspection stamp
         stamp: {

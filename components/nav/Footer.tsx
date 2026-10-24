@@ -48,7 +48,7 @@ export default async function Footer() {
 
         {columns.map((col) => (
           <div key={col.title}>
-            <p className="font-mono text-xs text-ink-400">{col.title}</p>
+            <p className="font-mono text-xs text-ink-500">{col.title}</p>
             <ul className="mt-4 space-y-2.5">
               {col.items.map((i) => (
                 <li key={i.href}>
@@ -63,7 +63,7 @@ export default async function Footer() {
       </div>
 
       <div className="border-t border-ink-100">
-        <div className="mx-auto flex max-w-[1280px] flex-col items-start justify-between gap-2 px-5 py-5 text-xs text-ink-400 sm:flex-row sm:items-center sm:px-8">
+        <div className="mx-auto flex max-w-[1280px] flex-col items-start justify-between gap-2 px-5 py-5 text-xs text-ink-500 sm:flex-row sm:items-center sm:px-8">
           <p>{t.copyright}</p>
           <p className="font-mono">{t.motto}</p>
         </div>

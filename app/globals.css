@@ -14,7 +14,7 @@
   --ink-900:    #2A1F14;
   --ink-700:    #46382A;
   --ink-500:    #6B5A45;
-  --ink-300:    #A8967B;
+  --ink-300:    #8D7E67;
   --ink-100:    #DFD0B2;
   --leaf-50:    #EEF0E0;
   --leaf-500:   #5C7633;
@@ -265,7 +265,7 @@
   }
   .chip-leaf  { background: var(--leaf-50);    color: var(--leaf-700); }
   .chip-aqua  { background: #EAF0EE;           color: var(--aqua-500); }
-  .chip-amber { background: #FAF0D9;           color: #9A6B12; }
+  .chip-amber { background: #FAF0D9;           color: #865D10; }
   .chip-ghost { background: var(--paper-card); color: var(--ink-500); border-color: var(--rule); }
 
   /* Sack-label section heading: "— Способ применения —" */
@@ -280,6 +280,8 @@
     text-transform: uppercase;
     color: var(--stamp);
   }
+  /* Red on mid-tone kraft is 2.6:1; the darker stamp ink reaches 4.5:1 */
+  .kraft .label-eyebrow { color: #75261C; }
   .label-eyebrow::before,
   .label-eyebrow::after {
     content: "";
