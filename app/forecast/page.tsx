@@ -7,7 +7,7 @@ import { AlertTriangle, ArrowRight, Loader2, Radio, Sparkles, TrendingUp } from 
 import { useSensor } from "@/components/SensorProvider";
 import { useLang } from "@/components/LanguageProvider";
 import PageHeader from "@/components/PageHeader";
-import { CountUp, Reveal, StaggerItem, StaggerList } from "@/components/motion/Motion";
+import { CountUp, Reveal, Seeds, StaggerItem, StaggerList } from "@/components/motion/Motion";
 import { CROPS } from "@/lib/crops";
 import { FORECAST } from "@/lib/i18n/pages/forecast";
 
@@ -192,8 +192,8 @@ export default function ForecastPage() {
                 exit={{ opacity: 0 }}
                 className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-md border-2 border-ink-900/10 bg-white p-8 text-center"
               >
-                <Loader2 className="h-8 w-8 animate-spin text-leaf-600" />
-                <p className="mt-4 font-display text-xl uppercase text-ink-900">{t.loading}</p>
+                <Seeds className="scale-150 text-leaf-600" />
+                <p className="mt-5 font-display text-xl uppercase text-ink-900">{t.loading}</p>
                 <p className="mt-1 text-sm text-ink-500">{t.loadingSub}</p>
               </motion.div>
             ) : (

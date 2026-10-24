@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, Camera, Leaf, Loader2, Sparkles, Upload, X } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import PageHeader from "@/components/PageHeader";
-import { Reveal, StaggerItem, StaggerList } from "@/components/motion/Motion";
+import { Reveal, Seeds, StaggerItem, StaggerList } from "@/components/motion/Motion";
 import { DIAGNOSE } from "@/lib/i18n/pages/diagnose";
 
 type Diagnosis = {
@@ -186,6 +186,17 @@ export default function DiagnosePage() {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={preview} alt={t.previewAlt} className="max-h-72 w-full bg-paper object-contain" />
+                {/* scanner sweeping the leaf while the agronomist looks at it */}
+                {busy && (
+                  <span aria-hidden className="pointer-events-none absolute inset-x-2.5 bottom-8 top-2.5 overflow-hidden">
+                    <motion.span
+                      className="absolute inset-0 border-b-2 border-leaf-400 bg-gradient-to-b from-transparent from-70% to-leaf-400/35"
+                      initial={{ y: "-100%" }}
+                      animate={{ y: "0%" }}
+                      transition={{ duration: 1.6, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" }}
+                    />
+                  </span>
+                )}
                 <button
                   onClick={reset}
                   className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-ink-900 text-paper shadow-card transition-transform hover:scale-110"
@@ -317,8 +328,8 @@ export default function DiagnosePage() {
                 exit={{ opacity: 0 }}
                 className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-md border-2 border-ink-900/10 bg-white p-8 text-center"
               >
-                <Loader2 className="h-8 w-8 animate-spin text-leaf-600" />
-                <p className="mt-4 font-display text-xl uppercase text-ink-900">{t.loading}</p>
+                <Seeds className="scale-150 text-leaf-600" />
+                <p className="mt-5 font-display text-xl uppercase text-ink-900">{t.loading}</p>
                 <p className="mt-1 text-sm text-ink-500">{t.loadingSub}</p>
               </motion.div>
             ) : (

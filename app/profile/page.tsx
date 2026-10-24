@@ -7,7 +7,7 @@ import { BadgeCheck, Calendar, Loader2, LogOut, Mail, ShoppingBag } from "lucide
 import { useUser } from "@/components/UserProvider";
 import { useLang } from "@/components/LanguageProvider";
 import PageHeader from "@/components/PageHeader";
-import { Reveal, StaggerItem, StaggerList } from "@/components/motion/Motion";
+import { Reveal, Seeds, StaggerItem, StaggerList } from "@/components/motion/Motion";
 import { PROFILE } from "@/lib/i18n/pages/profile";
 
 type Order = {
@@ -51,7 +51,7 @@ export default function ProfilePage() {
   if (loading || !user) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-leaf-600" />
+        <Seeds className="scale-125 text-leaf-600" />
       </main>
     );
   }

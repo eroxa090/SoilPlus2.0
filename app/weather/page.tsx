@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Cloud, CloudRain, Loader2, MapPin, Search, Sun } from "lucide-react";
+import { AlertTriangle, ArrowRight, Cloud, CloudRain, MapPin, Search, Sun } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import PageHeader from "@/components/PageHeader";
-import { Reveal, StaggerItem, StaggerList } from "@/components/motion/Motion";
+import { Reveal, Seeds, StaggerItem, StaggerList } from "@/components/motion/Motion";
 import { WEATHER } from "@/lib/i18n/pages/weather";
 import { apiErrorText } from "@/lib/i18n/errors";
 
@@ -138,7 +138,7 @@ export default function WeatherPage() {
 
       {busy && !data && (
         <div className="mt-6 flex min-h-[240px] items-center justify-center rounded-md border-2 border-dashed border-ink-900/15">
-          <Loader2 className="h-6 w-6 animate-spin text-leaf-600" />
+          <Seeds className="scale-125 text-leaf-600" />
         </div>
       )}
 
