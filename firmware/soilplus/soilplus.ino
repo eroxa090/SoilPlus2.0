@@ -31,6 +31,7 @@
  */
 
 #include <WiFi.h>
+#include <WiFiMulti.h>
 #include <WebSocketsServer.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -43,13 +44,16 @@
  *      Compatibility" (that is what forces 2.4 GHz); on Android disable
  *      the 5 GHz band for the hotspot.
  *
- *      The SSID and password live in secrets.h, which git ignores, so a
- *      password never lands in the public repository. First build on a
- *      new machine: copy secrets.example.h to secrets.h and fill it in.
+ *      Credentials live in secrets.h, which git ignores, so a password
+ *      never lands in the public repository. First build on a new machine:
+ *      copy secrets.example.h to secrets.h and fill it in.
+ *
+ *      Up to three hotspots can be listed (SOILPLUS_WIFI_SSID, _2, _3).
+ *      The board joins whichever known one is in range, so each team member
+ *      can run the demo from their own phone without a reflash.
  * =====================================================================*/
 #include "secrets.h"
-const char* WIFI_SSID     = SOILPLUS_WIFI_SSID;
-const char* WIFI_PASSWORD = SOILPLUS_WIFI_PASSWORD;
+WiFiMulti wifiMulti;
 
 /* =====================================================================
  *  2)  PIN MAP
@@ -394,15 +398,24 @@ void connectWiFi() {
   Serial.println("  SoilPlus  —  WRO 2026 Future Innovators");
   Serial.println("  Uralsk, Kazakhstan");
   Serial.println("============================================");
-  Serial.printf("[WiFi] Connecting to SSID \"%s\"", WIFI_SSID);
-
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  Serial.print("[WiFi] Known hotspots: \"" SOILPLUS_WIFI_SSID "\"");
+  wifiMulti.addAP(SOILPLUS_WIFI_SSID, SOILPLUS_WIFI_PASSWORD);
+#ifdef SOILPLUS_WIFI_SSID_2
+  Serial.print(", \"" SOILPLUS_WIFI_SSID_2 "\"");
+  wifiMulti.addAP(SOILPLUS_WIFI_SSID_2, SOILPLUS_WIFI_PASSWORD_2);
+#endif
+#ifdef SOILPLUS_WIFI_SSID_3
+  Serial.print(", \"" SOILPLUS_WIFI_SSID_3 "\"");
+  wifiMulti.addAP(SOILPLUS_WIFI_SSID_3, SOILPLUS_WIFI_PASSWORD_3);
+#endif
+  Serial.print("\n[WiFi] Searching");
 
   uint32_t t0 = millis();
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(400);
+  // run() scans and joins the strongest known network in range.
+  while (wifiMulti.run(3000) != WL_CONNECTED) {
     Serial.print('.');
     // Give up after ~18 s so the main loop (and the serial calibration
     // console) can run even with no hotspot around. loop() keeps trying
@@ -417,7 +430,8 @@ void connectWiFi() {
 
   Serial.println();
   Serial.println("--------------------------------------------");
-  Serial.print  ("[WiFi] Connected!  IP address:   ");
+  Serial.printf ("[WiFi] Connected to \"%s\"\n", WiFi.SSID().c_str());
+  Serial.print  ("[WiFi] IP address:               ");
   Serial.println(WiFi.localIP());
   Serial.print  ("[WiFi] Signal strength (RSSI):   ");
   Serial.print  (WiFi.RSSI());
@@ -504,10 +518,16 @@ void loop() {
     Serial.println();
   }
 
-  /* ----- Passive Wi-Fi recovery (non-blocking, every 30 s) ----- */
+  /* ----- Passive Wi-Fi recovery (every 30 s while offline) ----- */
+  // wifiMulti.run() scans for any known hotspot, so a phone switched on
+  // after boot is still picked up. The scan holds the loop for ~2-3 s,
+  // but only every 30 s and only while there is no connection.
   static uint32_t lastWifiTry = 0;
   if (WiFi.status() != WL_CONNECTED && now - lastWifiTry > 30000) {
     lastWifiTry = now;
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);   // fire-and-forget; never blocks
+    if (wifiMulti.run(3000) == WL_CONNECTED) {
+      Serial.printf("[WiFi] Reconnected to \"%s\", IP %s\n",
+                    WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
+    }
   }
 }
