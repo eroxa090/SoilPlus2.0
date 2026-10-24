@@ -262,3 +262,24 @@ export async function insertOrder(order: Order): Promise<void> {
   orders.push(order);
   await writeJson(ORDERS_FILE, orders);
 }
+
+export async function updateUserPassword(
+  userId: string,
+  passwordHash: string,
+  passwordSalt: string,
+): Promise<void> {
+  if (usingSupabase) {
+    const { error } = await (await supa())
+      .from("users")
+      .update({ password_hash: passwordHash, password_salt: passwordSalt })
+      .eq("id", userId);
+    if (error) throw new Error(`Supabase password update failed: ${error.message}`);
+    return;
+  }
+  const users = await readJson<User[]>(USERS_FILE, []);
+  const idx = users.findIndex((u) => u.id === userId);
+  if (idx === -1) throw new Error("User not found");
+  users[idx].passwordHash = passwordHash;
+  users[idx].passwordSalt = passwordSalt;
+  await writeJson(USERS_FILE, users);
+}

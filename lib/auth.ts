@@ -17,6 +17,7 @@ import {
   insertUser,
   ordersByUser,
   updateUserOwnership,
+  updateUserPassword,
 } from "./store";
 import type { Order, PublicUser, User, UserRole } from "./auth-types";
 
@@ -72,6 +73,83 @@ function verifyToken(token: string): { uid: string; exp: number } | null {
   } catch {
     return null;
   }
+}
+
+/* ---------- password-reset token (HMAC, stateless) ---------- */
+
+// A reset link carries a signed token instead of a row in the database, so
+// the feature needs no schema change. Three properties make it safe:
+//   • it is signed with a key derived for this purpose only, so a reset token
+//     can never be replayed as a session cookie (and vice versa);
+//   • it expires after RESET_TTL_MINUTES;
+//   • it embeds a fingerprint of the user's current password hash, so the
+//     moment the password changes every outstanding link stops working —
+//     a link is effectively single-use without storing anything.
+
+const RESET_TTL_MINUTES = 60;
+
+function resetKey(): string {
+  return `${sessionSecret()}|password-reset`;
+}
+
+function hashFingerprint(passwordHash: string): string {
+  return crypto
+    .createHmac("sha256", resetKey())
+    .update(passwordHash)
+    .digest("base64url")
+    .slice(0, 22);
+}
+
+export function createPasswordResetToken(user: User): string {
+  const payload = {
+    p: "reset",
+    uid: user.id,
+    exp: Date.now() + RESET_TTL_MINUTES * 60 * 1000,
+    fp: hashFingerprint(user.passwordHash),
+  };
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = crypto.createHmac("sha256", resetKey()).update(body).digest("base64url");
+  return `${body}.${sig}`;
+}
+
+async function verifyPasswordResetToken(token: string): Promise<User | null> {
+  const [body, sig] = token.split(".");
+  if (!body || !sig) return null;
+  const expected = crypto.createHmac("sha256", resetKey()).update(body).digest("base64url");
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+
+  let payload: { p?: string; uid?: string; exp?: number; fp?: string };
+  try {
+    payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+  if (payload.p !== "reset" || !payload.uid || !payload.fp) return null;
+  if (!payload.exp || payload.exp < Date.now()) return null;
+
+  const user = await findUserById(payload.uid);
+  if (!user) return null;
+  // Password already changed since the link was issued → link is spent.
+  if (hashFingerprint(user.passwordHash) !== payload.fp) return null;
+  return user;
+}
+
+/** Returns the user on success, or null when the link is invalid/expired/used. */
+export async function resetPasswordWithToken(
+  token: string,
+  newPassword: string,
+): Promise<User | null> {
+  if (newPassword.length < 8) {
+    throw new Error("Password must be at least 8 characters");
+  }
+  const user = await verifyPasswordResetToken(token);
+  if (!user) return null;
+  const salt = crypto.randomBytes(16).toString("hex");
+  const passwordHash = hashPassword(newPassword, salt);
+  await updateUserPassword(user.id, passwordHash, salt);
+  return { ...user, passwordHash, passwordSalt: salt };
 }
 
 /* ---------- public helpers ---------- */
