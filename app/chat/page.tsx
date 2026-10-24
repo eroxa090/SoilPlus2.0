@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ArrowUp, Loader2, Radio, WifiOff } from "lucide-react";
 import { useSensor } from "@/components/SensorProvider";
 import { useLang } from "@/components/LanguageProvider";
 import PageHeader from "@/components/PageHeader";
-import { Reveal } from "@/components/motion/Motion";
+import { Reveal, Seeds } from "@/components/motion/Motion";
 import { CROPS } from "@/lib/crops";
 import { CHAT } from "@/lib/i18n/pages/chat";
 
@@ -167,7 +167,7 @@ export default function ChatPage() {
           {/* Messages — ruled notebook paper */}
           <div
             ref={scrollerRef}
-            className="min-h-[440px] flex-1 space-y-5 overflow-y-auto px-5 py-7 sm:px-8"
+            className="min-h-[440px] flex-1 space-y-5 overflow-y-auto overflow-x-hidden px-5 py-7 sm:px-8"
             style={{
               backgroundImage: "repeating-linear-gradient(to bottom, transparent 0 31px, rgba(61,107,110,0.12) 31px 32px)",
             }}
@@ -176,17 +176,33 @@ export default function ChatPage() {
             {messages.map((m) => (
               <Bubble key={m.ts} role={m.role} content={m.content} name={m.role === "user" ? t.you : t.agronomist} />
             ))}
-            {busy && (
-              <div className="flex items-center gap-2 pl-12 font-hand text-xl text-ink-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t.thinking}
-              </div>
-            )}
+            <AnimatePresence>
+              {busy && (
+                <motion.div
+                  key="thinking"
+                  role="status"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, transition: { duration: 0.15 } }}
+                  className="flex items-center gap-3 pl-12 font-hand text-xl text-ink-500"
+                >
+                  <Seeds className="text-leaf-600" />
+                  {t.thinking}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* Suggestions */}
+          {/* Suggestions — fold away once the conversation starts */}
+          <AnimatePresence initial={false}>
           {messages.length === 0 && (
-            <div className="border-t-2 border-dashed border-ink-900/15 bg-paper px-6 py-4">
+            <motion.div
+              key="suggestions"
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ type: "spring", bounce: 0, visualDuration: 0.3 }}
+              style={{ overflow: "hidden" }}
+              className="border-t-2 border-dashed border-ink-900/15 bg-paper px-6 py-4"
+            >
               <p className="mb-3 font-display text-xs uppercase tracking-[0.16em] text-ink-500">{t.try}</p>
               <div className="flex flex-wrap gap-2">
                 {t.suggestions.map((s) => (
@@ -199,8 +215,9 @@ export default function ChatPage() {
                   </button>
                 ))}
               </div>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
 
           {/* Composer */}
           <form onSubmit={onSubmit} className="flex items-end gap-3 border-t-2 border-ink-900/80 bg-paper px-5 py-4">
@@ -308,10 +325,12 @@ export default function ChatPage() {
 function Bubble({ role, content, name }: { role: "user" | "assistant"; content: string; name: string }) {
   const isUser = role === "user";
   return (
+    // A slip of paper slid in from the writer's side of the notebook.
     <motion.div
-      initial={{ opacity: 0, y: 12, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
+      initial={{ opacity: 0, x: isUser ? 36 : -36, rotate: isUser ? 2.5 : -2.5 }}
+      animate={{ opacity: 1, x: 0, rotate: 0 }}
+      transition={{ type: "spring", bounce: 0.25, visualDuration: 0.4 }}
+      style={{ originX: isUser ? 1 : 0, originY: 1 }}
       className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}
     >
       <div
