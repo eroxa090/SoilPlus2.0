@@ -39,11 +39,17 @@
 
 /* =====================================================================
  *  1)  WI-FI — point this at your phone's hotspot.
- *      ESP32 supports 2.4 GHz only. Turn OFF "Maximize Compatibility"
- *      on iPhone, and disable 5 GHz on Android hotspots.
+ *      ESP32 supports 2.4 GHz only. On iPhone turn ON "Maximize
+ *      Compatibility" (that is what forces 2.4 GHz); on Android disable
+ *      the 5 GHz band for the hotspot.
+ *
+ *      The SSID and password live in secrets.h, which git ignores, so a
+ *      password never lands in the public repository. First build on a
+ *      new machine: copy secrets.example.h to secrets.h and fill it in.
  * =====================================================================*/
-const char* WIFI_SSID     = "iPhoneyers";       // ← change this
-const char* WIFI_PASSWORD = "eroha999";   // ← change this
+#include "secrets.h"
+const char* WIFI_SSID     = SOILPLUS_WIFI_SSID;
+const char* WIFI_PASSWORD = SOILPLUS_WIFI_PASSWORD;
 
 /* =====================================================================
  *  2)  PIN MAP

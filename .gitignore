@@ -41,3 +41,6 @@ Screenshot*.png
 20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.jpg
 20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.jpeg
 20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.png
+
+# Firmware Wi-Fi credentials (copy secrets.example.h → secrets.h)
+firmware/soilplus/secrets.h
