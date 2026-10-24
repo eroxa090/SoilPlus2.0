@@ -8,7 +8,7 @@ import { useSensor } from "@/components/SensorProvider";
 import { useLang } from "@/components/LanguageProvider";
 import PageHeader from "@/components/PageHeader";
 import OrnamentBand from "@/components/OrnamentBand";
-import { CountUp, Reveal, StaggerItem, StaggerList } from "@/components/motion/Motion";
+import { CountUp, Reveal, StaggerItem, StaggerList, Tilt } from "@/components/motion/Motion";
 import { HERITAGE } from "@/lib/i18n/pages/heritage";
 
 type PlantId = "aport" | "tulip" | "saxaul";
@@ -141,7 +141,16 @@ export default function HeritagePage() {
           const Icon = p.icon;
           const pt = t.plants[p.id];
           return (
-            <StaggerItem key={p.id}>
+            <StaggerItem key={p.id} className="relative">
+              {active && (
+                <motion.span
+                  layoutId="heritage-pick"
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-2 rounded-lg border-2 border-dashed border-stamp-500"
+                  transition={{ type: "spring", bounce: 0.25, visualDuration: 0.4 }}
+                />
+              )}
+              <Tilt max={6} className="rounded-md">
               <button
                 onClick={() => {
                   setSelected(p);
@@ -179,6 +188,7 @@ export default function HeritagePage() {
                   </span>
                 </span>
               </button>
+              </Tilt>
             </StaggerItem>
           );
         })}
