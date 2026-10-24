@@ -38,6 +38,23 @@ const isReading = (v: unknown): v is SoilReading => {
 };
 
 /**
+ * Detach every handler before closing, so a socket we are replacing can't
+ * fire a late onclose that clobbers its successor or schedules a reconnect.
+ */
+function dispose(ws: WebSocket | null) {
+  if (!ws) return;
+  ws.onopen = null;
+  ws.onmessage = null;
+  ws.onerror = null;
+  ws.onclose = null;
+  try {
+    ws.close();
+  } catch {
+    /* noop */
+  }
+}
+
+/**
  * Connects to the ESP32 WebSocket server (ws://<ip>:81/) and keeps a
  * rolling buffer of sensor samples. Reconnects automatically with
  * exponential back-off when the hotspot dips.
@@ -51,29 +68,30 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
   const [error, setError] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const hostRef = useRef<string>("");
   const backoffRef = useRef(500);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldRunRef = useRef(autoConnect);
 
-  const close = useCallback(() => {
-    shouldRunRef.current = false;
+  const clearRetry = () => {
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
     }
-    if (wsRef.current) {
-      try {
-        wsRef.current.close();
-      } catch {
-        /* noop */
-      }
-      wsRef.current = null;
-    }
+  };
+
+  const close = useCallback(() => {
+    shouldRunRef.current = false;
+    clearRetry();
+    dispose(wsRef.current);
+    wsRef.current = null;
+    // A reading from a board we have disconnected from is no longer live.
+    setLatest(null);
     setStatus("closed");
   }, []);
 
   const connect = useCallback(
-    (targetIp?: string) => {
+    (targetIp?: string, isRetry = false) => {
       const hostIp = (targetIp ?? ip).trim();
       if (!hostIp) {
         setError("ESP32 IP address is required");
@@ -81,18 +99,19 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
         return;
       }
       shouldRunRef.current = true;
+      clearRetry();
       setError(null);
-      setStatus(wsRef.current ? "reconnecting" : "connecting");
+      setStatus(wsRef.current || isRetry ? "reconnecting" : "connecting");
 
-      // Close a stale socket if still open
-      if (wsRef.current) {
-        try {
-          wsRef.current.close();
-        } catch {
-          /* noop */
-        }
-        wsRef.current = null;
+      // A different board: its old readings must not pass for the new one's.
+      if (hostRef.current && hostRef.current !== hostIp) {
+        setLatest(null);
+        setHistory([]);
       }
+      hostRef.current = hostIp;
+
+      dispose(wsRef.current);
+      wsRef.current = null;
 
       const url = `ws://${hostIp}:81/`;
       let ws: WebSocket;
@@ -105,12 +124,15 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
       }
       wsRef.current = ws;
 
+      // Every handler checks it still belongs to the current socket.
       ws.onopen = () => {
+        if (wsRef.current !== ws) return;
         backoffRef.current = 500;
         setStatus("connected");
       };
 
       ws.onmessage = (evt) => {
+        if (wsRef.current !== ws) return;
         try {
           const parsed = JSON.parse(evt.data as string);
           if (!isReading(parsed)) return;
@@ -127,11 +149,13 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
       };
 
       ws.onerror = () => {
+        if (wsRef.current !== ws) return;
         setError("WebSocket error");
         setStatus("error");
       };
 
       ws.onclose = () => {
+        if (wsRef.current !== ws) return;
         wsRef.current = null;
         if (!shouldRunRef.current) {
           setStatus("closed");
@@ -140,7 +164,7 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
         setStatus("reconnecting");
         const delay = Math.min(backoffRef.current, 6000);
         backoffRef.current = Math.min(backoffRef.current * 1.8, 6000);
-        retryTimerRef.current = setTimeout(() => connect(hostIp), delay);
+        retryTimerRef.current = setTimeout(() => connect(hostIp, true), delay);
       };
     },
     [ip, maxSamples],
@@ -153,15 +177,9 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
     connect(ip);
     return () => {
       shouldRunRef.current = false;
-      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
-      if (wsRef.current) {
-        try {
-          wsRef.current.close();
-        } catch {
-          /* noop */
-        }
-        wsRef.current = null;
-      }
+      clearRetry();
+      dispose(wsRef.current);
+      wsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ip, autoConnect]);

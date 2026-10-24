@@ -13,7 +13,7 @@ export async function GET() {
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json(
-      { error: "Authentication required" },
+      { error: "Authentication required", code: "auth_required" },
       { status: 401 },
     );
   }
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for") ?? "local";
   if (!rateLimit(`orders:${ip}`, { max: 5, windowMs: 60_000 })) {
     return NextResponse.json(
-      { error: "Too many order attempts. Try again in a minute." },
+      { error: "Too many order attempts. Try again in a minute.", code: "rate_limited" },
       { status: 429 },
     );
   }
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json(
-      { error: "Please sign in to order a device." },
+      { error: "Please sign in to order a device.", code: "auth_required" },
       { status: 401 },
     );
   }
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   try {
     body = (await req.json()) as Record<string, unknown>;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON", code: "invalid_json" }, { status: 400 });
   }
 
   const phone = str(body.phone).slice(0, 40);
@@ -53,13 +53,13 @@ export async function POST(req: Request) {
 
   if (!phone || !country || !city || !address) {
     return NextResponse.json(
-      { error: "Phone, country, city and address are required." },
+      { error: "Phone, country, city and address are required.", code: "missing_fields" },
       { status: 400 },
     );
   }
   if (!Number.isFinite(quantity) || quantity < 1 || quantity > 100) {
     return NextResponse.json(
-      { error: "Quantity must be between 1 and 100." },
+      { error: "Quantity must be between 1 and 100.", code: "bad_quantity" },
       { status: 400 },
     );
   }

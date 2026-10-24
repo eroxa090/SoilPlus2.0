@@ -45,7 +45,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Bad reading payload" }, { status: 400 });
   }
   const area = body.area;
-  if (!area || typeof area.value !== "number" || area.value <= 0 || !(area.unit in AREA_TO_M2)) {
+  // hasOwn, not `in`: "toString" is "in" every object and would yield NaN m².
+  if (!area || typeof area.value !== "number" || area.value <= 0 || !Object.hasOwn(AREA_TO_M2, area.unit)) {
     return NextResponse.json({ error: "Bad area payload" }, { status: 400 });
   }
 

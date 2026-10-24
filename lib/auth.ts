@@ -22,6 +22,14 @@ import type { Order, PublicUser, User, UserRole } from "./auth-types";
 
 export type { Order, PublicUser, User, UserRole } from "./auth-types";
 
+/** An expected, user-facing failure; `code` lets the UI show it in its language. */
+export class AuthError extends Error {
+  constructor(public code: string, message: string) {
+    super(message);
+    this.name = "AuthError";
+  }
+}
+
 /* ---------- password hashing ---------- */
 
 function hashPassword(password: string, salt: string): string {
@@ -100,12 +108,12 @@ export async function createUser(input: {
   password: string;
 }): Promise<PublicUser> {
   const email = input.email.trim().toLowerCase();
-  if (!/.+@.+\..+/.test(email)) throw new Error("Invalid email");
+  if (!/.+@.+\..+/.test(email)) throw new AuthError("invalid_email", "Invalid email");
   if (input.password.length < 8) {
-    throw new Error("Password must be at least 8 characters");
+    throw new AuthError("short_password", "Password must be at least 8 characters");
   }
   const existing = await findUserByEmail(email);
-  if (existing) throw new Error("Email already registered");
+  if (existing) throw new AuthError("email_taken", "Email already registered");
 
   const salt = crypto.randomBytes(16).toString("hex");
   const passwordHash = hashPassword(input.password, salt);
@@ -130,7 +138,9 @@ export async function verifyCredentials(
   email: string,
   password: string,
 ): Promise<User | null> {
-  const user = await findUserByEmail(email);
+  // Emails are stored lowercased (createUser); phone keyboards capitalise
+  // the first letter, so normalise the same way or the login never matches.
+  const user = await findUserByEmail(email.trim().toLowerCase());
   if (!user) return null;
   const candidate = hashPassword(password, user.passwordSalt);
   if (

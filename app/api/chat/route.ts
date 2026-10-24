@@ -187,10 +187,13 @@ export async function POST(req: Request) {
     });
 
     // Convert our messages[] into Gemini chat history (minus the last user msg).
+    // Gemini requires the history to open with a user turn, so drop any
+    // leading assistant messages (e.g. a UI greeting).
     const history = messages.slice(0, -1).map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
     }));
+    while (history.length && history[0].role === "model") history.shift();
     const chat = model.startChat({ history });
     const last = messages[messages.length - 1];
     const result = await chat.sendMessage(last.content);
