@@ -5,12 +5,15 @@ import ReadingSheet from "@/components/home/ReadingSheet";
 import OrnamentBand from "@/components/OrnamentBand";
 import {
   CountUp,
+  Magnetic,
   Parallax,
   Reveal,
   SewLine,
   StaggerItem,
   StaggerList,
   StampIn,
+  StampLetters,
+  Tilt,
 } from "@/components/motion/Motion";
 import { CROPS } from "@/lib/crops";
 import { getDict, getLang } from "@/lib/i18n/server";
@@ -65,7 +68,9 @@ export default async function LandingPage() {
           <Reveal y={40} className="kraft stitch relative rounded-md px-7 py-9 shadow-soft sm:px-12 sm:py-12 short:py-9">
             <p className="label-eyebrow pr-16 sm:pr-24">{t.batch}</p>
 
-            <p className="mt-5 font-stamp text-[64px] leading-[0.9] text-ink-900 sm:text-[104px] short:mt-3 short:text-[84px]">SoilPlus</p>
+            <p className="mt-5 font-stamp text-[64px] leading-[0.9] text-ink-900 sm:text-[104px] short:mt-3 short:text-[84px]">
+              <StampLetters text="SoilPlus" />
+            </p>
             <p className="mt-2 font-display text-sm uppercase tracking-[0.22em] text-ink-700 sm:text-base">{t.kind}</p>
 
             <SewLine className="my-7 border-y-[3px] border-double border-ink-900 py-[3px] short:my-5" />
@@ -78,10 +83,12 @@ export default async function LandingPage() {
             <p className="mt-5 max-w-[50ch] text-[17px] leading-relaxed text-ink-900 short:mt-4">{t.lead}</p>
 
             <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-4 short:mt-6">
-              <Link href="/connect" className="btn btn-stamp group px-6 py-3.5 text-base">
-                {t.ctaConnect}
-                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" strokeWidth={2.5} />
-              </Link>
+              <Magnetic>
+                <Link href="/connect" className="btn btn-stamp group px-6 py-3.5 text-base">
+                  {t.ctaConnect}
+                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" strokeWidth={2.5} />
+                </Link>
+              </Magnetic>
               <Link href="/irrigation" className="link-quiet">
                 {t.ctaIrrigation}
                 <ArrowUpRight className="h-4 w-4" strokeWidth={2.5} />
@@ -234,9 +241,10 @@ export default async function LandingPage() {
         <StaggerList className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {CROPS.map((c, i) => (
             <StaggerItem key={c.id}>
+              <Tilt className="rounded-md">
               <Link
                 href="/irrigation"
-                className={`card card-hover group flex h-full flex-col overflow-hidden ${i % 2 ? "hover:rotate-1" : "hover:-rotate-1"}`}
+                className="card group flex h-full flex-col overflow-hidden transition-shadow duration-200 hover:shadow-[4px_6px_0_0_rgba(42,31,20,0.14)]"
               >
                 <div className="flex items-center justify-between bg-leaf-700 px-3 py-1.5 font-mono text-[11px] text-leaf-100 transition-colors group-hover:bg-stamp-500">
                   <span>№ {String(i + 1).padStart(2, "0")}</span>
@@ -249,6 +257,7 @@ export default async function LandingPage() {
                   <p className="mt-1 text-[13px] italic leading-snug text-ink-500">{LATIN[c.id]}</p>
                 </div>
               </Link>
+              </Tilt>
             </StaggerItem>
           ))}
         </StaggerList>
@@ -274,10 +283,12 @@ export default async function LandingPage() {
                 </li>
               ))}
             </ol>
-            <Link href="/connect" className="btn btn-stamp group mt-8 px-6 py-3.5 text-base">
-              {t.final.cta}
-              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" strokeWidth={2.5} />
-            </Link>
+            <Magnetic className="mt-8">
+              <Link href="/connect" className="btn btn-stamp group px-6 py-3.5 text-base">
+                {t.final.cta}
+                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" strokeWidth={2.5} />
+              </Link>
+            </Magnetic>
           </Reveal>
         </div>
       </section>
