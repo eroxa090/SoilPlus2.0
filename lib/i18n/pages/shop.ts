@@ -6,7 +6,6 @@ const ru = {
   title: "SoilPlus Sensor Kit",
   lead: "Портативный агроассистент для фермеров Казахстана. Меряет почву в реальном времени, считает точную норму полива и узнаёт болезни по фото.",
   photoAlt: "Прибор SoilPlus в сборе: ESP32 с датчиками влажности, pH, EC и температуры",
-  photoCaption: "Прототип, собран в Уральске",
   perKit: "за комплект · доставка по РК 3–5 дней",
   features: [
     ["Температура, pH, EC, влажность", "Четыре показателя почвы 5 раз в секунду."],
@@ -56,7 +55,6 @@ const en: typeof ru = {
   title: "SoilPlus Sensor Kit",
   lead: "A portable farm assistant for Kazakhstan. It measures soil in real time, works out the exact irrigation norm and spots plant disease from a photo.",
   photoAlt: "Assembled SoilPlus device: ESP32 with moisture, pH, EC and temperature sensors",
-  photoCaption: "Prototype, built in Uralsk",
   perKit: "per kit · delivery in Kazakhstan 3–5 days",
   features: [
     ["Temperature, pH, EC, moisture", "Four soil readings five times a second."],

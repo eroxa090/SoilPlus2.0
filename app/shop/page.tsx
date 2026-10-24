@@ -78,7 +78,6 @@ export default function ShopPage() {
                   sizes="(max-width: 1024px) 100vw, 600px"
                 />
               </div>
-              <figcaption className="absolute bottom-3 left-4 font-hand text-2xl text-ink-700">{t.photoCaption}</figcaption>
               <span aria-hidden className="absolute -top-3 left-10 h-7 w-24 rotate-[-6deg] bg-amber-100/80 shadow-sm" />
             </figure>
             </Tilt>
