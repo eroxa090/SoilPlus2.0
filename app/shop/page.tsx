@@ -7,7 +7,7 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Loader2, ShoppingBag } from "l
 import { useUser } from "@/components/UserProvider";
 import { useLang } from "@/components/LanguageProvider";
 import PageHeader from "@/components/PageHeader";
-import { Reveal, StaggerItem, StaggerList, StampIn } from "@/components/motion/Motion";
+import { AnimatedNumber, Reveal, StaggerItem, StaggerList, StampIn, Tilt } from "@/components/motion/Motion";
 import { SHOP } from "@/lib/i18n/pages/shop";
 import { apiErrorText } from "@/lib/i18n/errors";
 
@@ -65,6 +65,7 @@ export default function ShopPage() {
         <div>
           {/* Device photo, pinned like a snapshot, with a price stamp */}
           <Reveal x={-30} rotate={-3} className="relative">
+            <Tilt max={5}>
             <figure className="relative -rotate-1 bg-white p-3 pb-12 shadow-soft">
               <div className="relative overflow-hidden">
                 <Image
@@ -80,6 +81,7 @@ export default function ShopPage() {
               <figcaption className="absolute bottom-3 left-4 font-hand text-2xl text-ink-700">{t.photoCaption}</figcaption>
               <span aria-hidden className="absolute -top-3 left-10 h-7 w-24 rotate-[-6deg] bg-amber-100/80 shadow-sm" />
             </figure>
+            </Tilt>
             <StampIn
               rotate={-12}
               delay={0.5}
@@ -170,7 +172,9 @@ export default function ShopPage() {
 
                   <div className="flex items-center justify-between border-y-2 border-double border-ink-900 py-3">
                     <span className="font-display uppercase tracking-wide text-ink-700">{t.total}</span>
-                    <span className="font-display text-3xl font-semibold text-ink-900">${total}</span>
+                    <span className="font-display text-3xl font-semibold text-ink-900">
+                      $<AnimatedNumber value={total} locale="en-US" />
+                    </span>
                   </div>
 
                   {error && (
