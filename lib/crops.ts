@@ -7,8 +7,16 @@
  *                Not volumetric water content: no mineral soil holds 75–85 %
  *                water by volume, while 60–85 % НВ is the textbook range.
  *   pH_opt     — optimal pH band
- *   EC_max     — upper tolerable salinity as TDS in ppm, the unit the probe
- *                reports (firmware converts with ppm ≈ 0.5 × µS/cm)
+ *   EC_max     — salinity threshold as TDS in ppm, the unit the probe reports
+ *                (firmware converts ppm = 0.5 × µS/cm). Values come from the
+ *                FAO salt-tolerance threshold ECe at 100 % yield, converted
+ *                with 1 dS/m = 1000 µS/cm → 500 ppm. Sources: FAO Irrigation
+ *                and Drainage Paper 29 Rev.1 (Ayers & Westcot), Table 4;
+ *                FAO Paper 61, Annex 1 (crop salt tolerance data).
+ *                Caveat: ECe is measured in a saturated-paste extract. A probe
+ *                reading taken in a more diluted extract (e.g. 1:2.5) reads
+ *                lower than ECe, so it compares conservatively — salinity
+ *                is under-flagged, never over-flagged.
  *   T_opt      — optimal soil-temperature band (°C)
  *   rootDepth  — active water-uptake root layer (m), used in volume formula
  */
@@ -40,7 +48,7 @@ export const CROPS: Crop[] = [
     family: "grain",
     wOptMin: 60, wOptMax: 70,
     phMin:   6.0, phMax: 7.5,
-    ecMax:  1500,
+    ecMax:  3000, // FAO: ECe 6.0 dS/m, moderately tolerant
     tOptMin: 12, tOptMax: 24,
     rootDepth: 0.6,
     note: "The strategic grain of the Kazakh steppe — stable yields require steady moisture in the tillering phase.",
@@ -53,7 +61,7 @@ export const CROPS: Crop[] = [
     family: "oil",
     wOptMin: 65, wOptMax: 75,
     phMin:   6.0, phMax: 7.2,
-    ecMax:  1800,
+    ecMax:  2400, // FAO: ECe 4.8 dS/m, moderately tolerant
     tOptMin: 16, tOptMax: 28,
     rootDepth: 0.8,
     note: "Deep-rooted, drought-tolerant — most sensitive to moisture during flowering.",
@@ -66,7 +74,7 @@ export const CROPS: Crop[] = [
     family: "vegetable",
     wOptMin: 70, wOptMax: 80,
     phMin:   5.5, phMax: 6.5,
-    ecMax:  1200,
+    ecMax:  850, // FAO: ECe 1.7 dS/m, moderately sensitive
     tOptMin: 14, tOptMax: 22,
     rootDepth: 0.4,
     note: "Prefers slightly acidic loam; over-irrigation causes rot, under-irrigation cracks tubers.",
@@ -79,7 +87,7 @@ export const CROPS: Crop[] = [
     family: "vegetable",
     wOptMin: 75, wOptMax: 85,
     phMin:   6.0, phMax: 6.8,
-    ecMax:  1000,
+    ecMax:  1250, // FAO: ECe 2.5 dS/m, moderately sensitive
     tOptMin: 18, tOptMax: 26,
     rootDepth: 0.5,
     note: "Narrow salinity tolerance — salt accumulation blossoms end-rot quickly.",
@@ -92,7 +100,7 @@ export const CROPS: Crop[] = [
     family: "grain",
     wOptMin: 65, wOptMax: 75,
     phMin:   6.0, phMax: 7.0,
-    ecMax:  1600,
+    ecMax:  850, // FAO: ECe 1.7 dS/m, moderately sensitive
     tOptMin: 18, tOptMax: 30,
     rootDepth: 0.7,
     note: "Peak demand at tasseling; a 5-day deficit reduces yield dramatically.",
@@ -105,10 +113,10 @@ export const CROPS: Crop[] = [
     family: "forage",
     wOptMin: 70, wOptMax: 80,
     phMin:   6.5, phMax: 7.5,
-    ecMax:  2000,
+    ecMax:  1000, // FAO: ECe 2.0 dS/m, moderately sensitive
     tOptMin: 15, tOptMax: 28,
     rootDepth: 1.2,
-    note: "Tolerant of moderate salinity; the deepest roots of our catalog.",
+    note: "Moderately sensitive to salinity (FAO ECe 2.0 dS/m); deep taproot reaching 1.2 m.",
   },
   {
     id: "cotton",
@@ -118,7 +126,7 @@ export const CROPS: Crop[] = [
     family: "oil",
     wOptMin: 60, wOptMax: 75,
     phMin:   6.5, phMax: 8.0,
-    ecMax:  2400,
+    ecMax:  3850, // FAO: ECe 7.7 dS/m, tolerant
     tOptMin: 22, tOptMax: 32,
     rootDepth: 0.9,
     note: "Salt-tolerant fiber crop — common in southern Kazakhstan irrigation zones.",
@@ -131,7 +139,7 @@ export const CROPS: Crop[] = [
     family: "grain",
     wOptMin: 55, wOptMax: 70,
     phMin:   6.0, phMax: 7.8,
-    ecMax:  2200,
+    ecMax:  4000, // FAO: ECe 8.0 dS/m, tolerant
     tOptMin: 10, tOptMax: 22,
     rootDepth: 0.6,
     note: "More salt-tolerant than wheat; the pragmatic choice for marginal plots.",
@@ -144,7 +152,7 @@ export const CROPS: Crop[] = [
     family: "legume",
     wOptMin: 65, wOptMax: 78,
     phMin:   6.0, phMax: 7.0,
-    ecMax:  1400,
+    ecMax:  2500, // FAO: ECe 5.0 dS/m, moderately tolerant
     tOptMin: 18, tOptMax: 28,
     rootDepth: 0.6,
     note: "Fixes atmospheric nitrogen — good rotation partner for cereals.",
@@ -157,7 +165,7 @@ export const CROPS: Crop[] = [
     family: "heritage",
     wOptMin: 55, wOptMax: 70,
     phMin:   6.0, phMax: 7.0,
-    ecMax:   900,
+    ecMax:   650, // FAO rates apple 'sensitive' with no measured threshold; 1.3 dS/m = upper bound of that class
     tOptMin: 12, tOptMax: 22,
     rootDepth: 1.5,
     note: "Heritage orchard — the mother apple of Central Asia. Cool, slightly acidic loam.",
@@ -170,7 +178,7 @@ export const CROPS: Crop[] = [
     family: "heritage",
     wOptMin: 25, wOptMax: 45,
     phMin:   6.5, phMax: 7.5,
-    ecMax:   600,
+    ecMax:   600, // no FAO data — project estimate, needs a source
     tOptMin: 8, tOptMax: 18,
     rootDepth: 0.25,
     note: "Wild progenitor of garden tulips — demands drainage; rots in wet soil.",
@@ -183,7 +191,7 @@ export const CROPS: Crop[] = [
     family: "heritage",
     wOptMin: 8,  wOptMax: 25,
     phMin:   7.5, phMax: 9.0,
-    ecMax:  2500,
+    ecMax:  2500, // no FAO data — halophyte, project estimate, needs a source
     tOptMin: 15, tOptMax: 35,
     rootDepth: 2.0,
     note: "Desert halophyte — the anchor of Betpaq-Dala and the Aral. Tolerates saline ground.",
