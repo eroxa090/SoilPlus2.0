@@ -128,7 +128,7 @@ export default function ChatPage() {
             Talk to your field.
           </h1>
           <p className="mt-3 max-w-xl text-ink-500">
-            Gemini 1.5 Flash reads the same ESP32 stream you see on the dashboard.
+            Gemini 2.5 Flash reads the same ESP32 stream you see on the dashboard.
             Ask about risks, irrigation norms, or which crop fits today&apos;s soil.
           </p>
         </div>

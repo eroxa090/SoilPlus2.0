@@ -2,21 +2,36 @@
  * Irrigation volume calculator.
  *
  * Formula from the SoilPlus research documentation (KazNIIZ methodology,
- * with FAO-56 evapotranspiration anchor):
+ * the Kostyakov irrigation-norm equation, FAO-56 single-event cap):
  *
- *   V = ΔW × D × ρ × S × K_pH × K_EC
+ *   V = ΔW × НВ × D × ρ × S × K_pH × K_EC
  *
- *     ΔW   — moisture deficit (fraction), max(W_opt_mid/100 - W_cur/100, 0)
+ *     ΔW   — moisture deficit as a fraction of field capacity:
+ *            max(W_opt_mid − W_cur, 0) / 100. Both the crop optimum bands and
+ *            the moisture reading are expressed in % of field capacity (% НВ),
+ *            the way Russian/Kazakh agronomy states them (wheat 60–70 % НВ).
+ *     НВ   — field capacity as gravimetric water content (kg water / kg soil),
+ *            default 0.24 (loam / dark-chestnut soils of West Kazakhstan).
  *     D    — active root-layer depth (m)
  *     ρ    — bulk soil density (kg/m³), default 1400 (loam)
  *     S    — area in m²
  *     K_pH — 0.85 when pH is outside the band, else 1.0
  *     K_EC — 1.30 when EC exceeds band (flushing mode), else 1.0
  *
- *   V is in kilograms of water ≈ litres (ρ_water ≈ 1000 kg/m³ → 1 kg ≈ 1 L).
+ *   ΔW × НВ is the gravimetric deficit, which is what the ρ term needs: it
+ *   turns "kg of water per kg of soil" into kilograms of water ≈ litres.
+ *   Multiplying the %-of-НВ gap by ρ directly (the previous version) skipped
+ *   that conversion and overstated every norm by 1/НВ — about 4×, e.g. 395 L/m²
+ *   instead of ~95 L/m² for wheat at 18 % НВ.
  *
  * We return richer output than a single number so the UI can explain *why*.
  */
+
+/** Human-readable formula, shared by the calculator UI and the AI prompt. */
+export const IRRIGATION_FORMULA = "V = ΔW × НВ × D × ρ × S × K_pH × K_EC";
+
+/** Default field capacity, gravimetric (kg/kg) — loam, dark-chestnut soils. */
+export const DEFAULT_FIELD_CAPACITY = 0.24;
 
 import { type Crop } from "./crops";
 
@@ -34,6 +49,8 @@ export type IrrigationInput = {
   areaM2: number;
   /** Optional override, kg/m³. Defaults to 1400. */
   soilDensity?: number;
+  /** Optional override, field capacity in kg/kg. Defaults to 0.24 (loam). */
+  fieldCapacity?: number;
 };
 
 export type IrrigationResult = {
@@ -76,13 +93,15 @@ export function computeIrrigation({
   reading,
   areaM2,
   soilDensity = 1400,
+  fieldCapacity = DEFAULT_FIELD_CAPACITY,
 }: IrrigationInput): IrrigationResult {
   const reasons: string[] = [];
 
-  // 1) Moisture deficit (ΔW)
+  // 1) Moisture deficit. deficitPct is in percentage points of field capacity;
+  //    × fieldCapacity turns it into a gravimetric deficit (kg water / kg soil).
   const wOptMid = (crop.wOptMin + crop.wOptMax) / 2;
   const deficitPct = Math.max(wOptMid - reading.moist, 0);
-  const deltaW = deficitPct / 100;
+  const deltaW = (deficitPct / 100) * fieldCapacity;
 
   // 2) pH correction
   let kPh = 1.0;
@@ -101,7 +120,7 @@ export function computeIrrigation({
     reasons.push(`Salinity high (${reading.tds} ppm vs. max ${crop.ecMax}). Apply 30% extra water to flush salts below the root zone.`);
   }
 
-  // 4) Volume: V = ΔW × D × ρ × S × K_pH × K_EC  → kg ≈ L
+  // 4) Volume: V = ΔW × НВ × D × ρ × S × K_pH × K_EC  → kg ≈ L
   const litresRaw = deltaW * crop.rootDepth * soilDensity * areaM2 * kPh * kEc;
   const litres = Math.round(litresRaw / 5) * 5;
   const litresPerM2Total = areaM2 > 0 ? litresRaw / areaM2 : 0;
@@ -115,9 +134,9 @@ export function computeIrrigation({
   else                        urgency = "critical";
 
   if (urgency === "none") {
-    reasons.unshift(`Влажность в оптимуме (${crop.wOptMin}–${crop.wOptMax}%) — поливать не нужно.`);
+    reasons.unshift(`Влажность в оптимуме (${crop.wOptMin}–${crop.wOptMax}% НВ) — поливать не нужно.`);
   } else {
-    reasons.unshift(`Дефицит влаги: ${deficitPct.toFixed(1)} п.п. от оптимума ${wOptMid}%.`);
+    reasons.unshift(`Дефицит влаги: ${deficitPct.toFixed(1)} п.п. от оптимума ${wOptMid}% НВ.`);
   }
 
   // 6) Watering schedule. Cap a single event at 35 L/m² (FAO-56) — split into

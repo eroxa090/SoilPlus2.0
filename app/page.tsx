@@ -85,7 +85,7 @@ export default function LandingPage() {
             <span>ESP32 · Wi-Fi Station Mode</span>
             <span>4 sensors · 5 Hz stream</span>
             <span>12+ crops · calibrated norms</span>
-            <span>Gemini 1.5 Flash · multilingual</span>
+            <span>Gemini 2.5 Flash · multilingual</span>
             <span>Field-tested · West Kazakhstan</span>
           </div>
         </div>

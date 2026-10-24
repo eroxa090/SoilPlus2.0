@@ -39,7 +39,7 @@ export default function ConnectPage() {
 
   const copySSID = async () => {
     try {
-      await navigator.clipboard.writeText("SoilPlus_Hotspot");
+      await navigator.clipboard.writeText("iPhoneyers");
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {/* ignore */}
@@ -147,11 +147,13 @@ export default function ConnectPage() {
                 Phone hotspot settings
               </h3>
               <p className="mt-1 text-sm text-ink-500">
-                In the firmware the SSID defaults to{" "}
+                The firmware joins the hotspot named{" "}
                 <code className="rounded bg-ink-100/80 px-1 py-0.5 font-mono text-[12px]">
-                  SoilPlus_Hotspot
+                  iPhoneyers
                 </code>
-                . Match both on your phone.
+                {" "}(<code className="rounded bg-ink-100/80 px-1 py-0.5 font-mono text-[12px]">WIFI_SSID</code> /{" "}
+                <code className="rounded bg-ink-100/80 px-1 py-0.5 font-mono text-[12px]">WIFI_PASSWORD</code>).
+                Give your phone hotspot the same name and password, 2.4 GHz.
               </p>
               <button
                 onClick={copySSID}
@@ -269,13 +271,18 @@ export default function ConnectPage() {
               Calibration before first field use
             </h3>
             <p className="mt-1 max-w-2xl text-sm text-ink-500">
-              pH with buffer solutions at 4.0, 7.0 and 10.0 (GOST 8.135-2004).
-              TDS with a standard KCl solution. Moisture with gravimetric soil
-              samples dried at 105 °C. The firmware constants
-              <code className="mx-1 rounded bg-ink-100 px-1 py-0.5 font-mono text-[12px]">PH_SLOPE</code>,
-              <code className="mx-1 rounded bg-ink-100 px-1 py-0.5 font-mono text-[12px]">MOIST_DRY</code>,
-              and <code className="mx-1 rounded bg-ink-100 px-1 py-0.5 font-mono text-[12px]">MOIST_WET</code>
-              should be tuned to your soil before running the calculator.
+              Calibration is stored on the board and set over the Serial console
+              (115200 baud) — no reflashing. Moisture: probe in dry air →
+              <code className="mx-1 rounded bg-ink-100 px-1 py-0.5 font-mono text-[12px]">cal moistdry</code>,
+              in water →
+              <code className="mx-1 rounded bg-ink-100 px-1 py-0.5 font-mono text-[12px]">cal moistwet</code>.
+              pH in buffers 7.00 and 4.00 (GOST 8.135-2004) →
+              <code className="mx-1 rounded bg-ink-100 px-1 py-0.5 font-mono text-[12px]">cal ph7</code>,
+              <code className="mx-1 rounded bg-ink-100 px-1 py-0.5 font-mono text-[12px]">cal ph4</code>.
+              TDS only in a solution of known strength →
+              <code className="mx-1 rounded bg-ink-100 px-1 py-0.5 font-mono text-[12px]">cal tds &lt;ppm&gt;</code>.
+              Check the stored values with
+              <code className="mx-1 rounded bg-ink-100 px-1 py-0.5 font-mono text-[12px]">cal show</code>.
             </p>
           </div>
         </div>

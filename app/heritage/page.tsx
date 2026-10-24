@@ -304,7 +304,7 @@ export default function HeritagePage() {
                   Ready when you are.
                 </p>
                 <p className="text-sm text-ink-500">
-                  Gemini 1.5 Flash will compare today&apos;s {reading.temp.toFixed(1)}
+                  Gemini 2.5 Flash will compare today&apos;s {reading.temp.toFixed(1)}
                   °C / pH {reading.ph.toFixed(2)} / {reading.tds} ppm / {reading.moist}
                   % against the cultural profile of {selected.name}, adjust within ±12
                   points, and return a three-sentence verdict — diagnosis, biological

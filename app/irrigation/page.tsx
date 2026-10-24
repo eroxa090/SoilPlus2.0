@@ -491,9 +491,9 @@ export default function IrrigationPage() {
           </div>
 
           <p className="mt-4 text-center text-xs text-ink-400">
-            Формула V = ΔW × D × ρ × S × K<sub>pH</sub> × K<sub>EC</sub> ·
-            один полив ≤ 35 л/м² (FAO-56). Калибровка — 3 типа почв, 0.5 га,
-            120 дней.
+            Формула V = ΔW × НВ × D × ρ × S × K<sub>pH</sub> × K<sub>EC</sub> ·
+            один полив ≤ 35 л/м² (FAO-56). Влажность в % от наименьшей
+            влагоёмкости (НВ); по умолчанию НВ = 0.24, ρ = 1400 кг/м³ (суглинок).
           </p>
         </div>
       </div>

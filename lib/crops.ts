@@ -3,9 +3,12 @@
  * calculator and the AI chat. Values are calibrated from the SoilPlus
  * research documentation (KazNIIZ + FAO-56 Table 3).
  *
- *   W_opt (%)  — optimal volumetric water content band
+ *   W_opt (%)  — optimal soil-moisture band in % of field capacity (% НВ).
+ *                Not volumetric water content: no mineral soil holds 75–85 %
+ *                water by volume, while 60–85 % НВ is the textbook range.
  *   pH_opt     — optimal pH band
- *   EC_max     — upper tolerable electrical-conductivity / TDS (µS/cm ≈ ppm)
+ *   EC_max     — upper tolerable salinity as TDS in ppm, the unit the probe
+ *                reports (firmware converts with ppm ≈ 0.5 × µS/cm)
  *   T_opt      — optimal soil-temperature band (°C)
  *   rootDepth  — active water-uptake root layer (m), used in volume formula
  */

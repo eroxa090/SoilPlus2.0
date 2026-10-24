@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { CROPS, getCrop, type Crop } from "@/lib/crops";
+import { computeIrrigation, IRRIGATION_FORMULA } from "@/lib/irrigation";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -273,12 +274,30 @@ function systemPrompt(
     lines.push(``, `TOP SUITABILITY FOR CURRENT SOIL: ${top3.join(", ")}.`);
   }
 
+  // The water volume is computed here, deterministically, and handed to the
+  // model to quote. The model used to receive only the formula and do the
+  // arithmetic itself — which made every litre figure in the chat a language
+  // model's estimate instead of the KazNIIZ calculation.
+  lines.push(``, `IRRIGATION (formula ${IRRIGATION_FORMULA}; moisture and crop bands are in % of field capacity):`);
+  if (reading && crop && areaM2 && areaM2 > 0) {
+    const ir = computeIrrigation({ crop, reading, areaM2 });
+    lines.push(
+      `  COMPUTED BY THE SOILPLUS ALGORITHM — quote these numbers exactly, never recompute or round differently:`,
+      `  total ${ir.litres} L (${ir.litresPerHa} L/ha), deficit ${ir.deficitPct.toFixed(1)} pp of field capacity,`,
+      `  urgency ${ir.urgency}, K_pH=${ir.kPh}, K_EC=${ir.kEc},`,
+      ir.eventsNeeded > 0
+        ? `  schedule: ${ir.eventsNeeded} watering(s) of ${ir.litresPerEvent} L (${ir.litresPerM2PerEvent} L/m²)` +
+          (ir.eventsNeeded > 1 ? `, ${ir.hoursBetweenEvents} h apart.` : `.`)
+        : `  schedule: no watering needed.`,
+    );
+  } else {
+    lines.push(
+      `  No computed volume is available (needs a live reading, a selected crop and a plot area).`,
+      `  If asked how much to water, do NOT calculate litres yourself — ask the user to pick the crop`,
+      `  and set the plot area, or open the Irrigation calculator.`,
+    );
+  }
   lines.push(
-    ``,
-    `IRRIGATION FORMULA (if asked for water volume):`,
-    `  V (litres) = ΔW × D × ρ × S × K_pH × K_EC`,
-    `  ΔW = max(optMid/100 − moist/100, 0); ρ = 1400 kg/m³; K_pH = 0.85 if pH out of band;`,
-    `  K_EC = 1.3 if TDS > ceiling (flushing). Always cite the result in litres and litres/ha.`,
     ``,
     `CULTURAL CONTEXT: SoilPlus is a Kazakh agri-tech platform from Uralsk. When a heritage crop is chosen`,
     `(Almaty Aport, Greig's Tulip, Saxaul) — connect your advice to the Kazakh landscape it belongs to.`,
@@ -334,7 +353,18 @@ function offlineReply(
     if (top5) parts.push(`Top crops for this soil:\n${top5}`);
   }
   if (/(вод|water|irrig|полив|litre|liter|литр)/.test(q) && crop) {
-    parts.push(`Water math uses V = ΔW × D × ρ × S × K_pH × K_EC. For a precise litre figure, set the area on the Irrigation page.`);
+    if (areaM2 && areaM2 > 0) {
+      const ir = computeIrrigation({ crop, reading, areaM2 });
+      parts.push(
+        ir.eventsNeeded === 0
+          ? `No watering needed: moisture is inside the ${crop.wOptMin}–${crop.wOptMax}% FC band for ${crop.name}.`
+          : `Water for ${areaM2} m²: ${ir.litres} L in total — ${ir.eventsNeeded} watering(s) of ${ir.litresPerEvent} L ` +
+            `(${ir.litresPerM2PerEvent} L/m²)${ir.eventsNeeded > 1 ? `, ${ir.hoursBetweenEvents} h apart` : ""}. ` +
+            `Computed with ${IRRIGATION_FORMULA}.`,
+      );
+    } else {
+      parts.push(`Set the plot area and I'll give the exact litres — computed with ${IRRIGATION_FORMULA}.`);
+    }
   }
 
   return parts.join("\n\n");
