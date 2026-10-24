@@ -9,6 +9,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Wide but short screens — 1280×720 laptops and 720p projectors —
+      // where the landing hero must fit with its call to action visible.
+      screens: {
+        short: { raw: "(min-width: 1024px) and (max-height: 820px)" },
+      },
       // "Seed sack" palette — kraft paper, sack-print brown ink, field green,
       // wheat ochre and a red inspection stamp. Scale names are kept from
       // v2.0 so every page picks the palette up.

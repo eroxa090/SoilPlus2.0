@@ -60,24 +60,24 @@ export default async function LandingPage() {
         </Parallax>
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-ink-900/10 to-ink-900/45" />
 
-        <div className="mx-auto grid max-w-[1280px] items-start gap-12 px-5 pb-20 pt-10 sm:px-8 sm:pt-16 lg:grid-cols-[1.3fr_1fr] lg:pb-28">
+        <div className="mx-auto grid max-w-[1280px] items-start gap-12 px-5 pb-20 pt-10 sm:px-8 sm:pt-16 lg:grid-cols-[1.3fr_1fr] lg:pb-28 short:pt-8">
           {/* The sack label */}
-          <Reveal y={40} className="kraft stitch relative rounded-md px-7 py-9 shadow-soft sm:px-12 sm:py-12">
+          <Reveal y={40} className="kraft stitch relative rounded-md px-7 py-9 shadow-soft sm:px-12 sm:py-12 short:py-9">
             <p className="label-eyebrow pr-16 sm:pr-24">{t.batch}</p>
 
-            <p className="mt-5 font-stamp text-[64px] leading-[0.9] text-ink-900 sm:text-[104px]">SoilPlus</p>
+            <p className="mt-5 font-stamp text-[64px] leading-[0.9] text-ink-900 sm:text-[104px] short:mt-3 short:text-[84px]">SoilPlus</p>
             <p className="mt-2 font-display text-sm uppercase tracking-[0.22em] text-ink-700 sm:text-base">{t.kind}</p>
 
-            <SewLine className="my-7 border-y-[3px] border-double border-ink-900 py-[3px]" />
+            <SewLine className="my-7 border-y-[3px] border-double border-ink-900 py-[3px] short:my-5" />
 
-            <h1 className="font-display text-[40px] uppercase leading-[0.98] text-ink-900 sm:text-[58px]">
+            <h1 className="font-display text-[40px] uppercase leading-[0.98] text-ink-900 sm:text-[58px] short:text-[50px]">
               {t.titleA}
               <br />
               <span className="text-leaf-700">{t.titleB}</span>
             </h1>
-            <p className="mt-5 max-w-[50ch] text-[17px] leading-relaxed text-ink-900">{t.lead}</p>
+            <p className="mt-5 max-w-[50ch] text-[17px] leading-relaxed text-ink-900 short:mt-4">{t.lead}</p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-4">
+            <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-4 short:mt-6">
               <Link href="/connect" className="btn btn-stamp group px-6 py-3.5 text-base">
                 {t.ctaConnect}
                 <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" strokeWidth={2.5} />
