@@ -52,7 +52,7 @@ const caveat = Caveat({
 export async function generateMetadata(): Promise<Metadata> {
   const t = DICTS[await getLang()];
   return {
-    title: t.meta.title,
+    title: { default: t.meta.title, template: "%s · SoilPlus" },
     description: t.meta.description,
     applicationName: "SoilPlus",
     keywords: [

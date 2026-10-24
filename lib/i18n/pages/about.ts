@@ -1,7 +1,7 @@
 import type { Lang } from "../dict";
 
 const ru = {
-  metaTitle: "О проекте — SoilPlus 2.0",
+  metaTitle: "О проекте",
   metaDescription: "Исследовательский проект SoilPlus: портативная система анализа почвы для малых и средних хозяйств Казахстана.",
   crumb: "О проекте",
   eyebrow: "Сделано в Уральске · 2026",
@@ -107,7 +107,7 @@ const ru = {
 };
 
 const en: typeof ru = {
-  metaTitle: "About — SoilPlus 2.0",
+  metaTitle: "About",
   metaDescription: "The SoilPlus research project: a portable soil-analysis system for small and medium farms in Kazakhstan.",
   crumb: "About",
   eyebrow: "Made in Uralsk · 2026",

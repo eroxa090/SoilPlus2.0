@@ -1,0 +1,8 @@
+import { titleFrom } from "@/lib/i18n/meta";
+import { AUTH } from "@/lib/i18n/pages/auth";
+
+export const generateMetadata = titleFrom(AUTH, (t) => t.loginTitle);
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return children;
+}
