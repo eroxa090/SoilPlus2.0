@@ -165,7 +165,7 @@ export default function ConnectPage() {
               {t.pins.map(([l, p]) => (
                 <tr key={p} className="border-b-2 border-ink-900/10 last:border-ink-900/60">
                   <td className="py-2.5 pr-4 text-ink-700">{l}</td>
-                  <td className="py-2.5 text-right font-mono text-ink-900">{p}</td>
+                  <td className="whitespace-nowrap py-2.5 text-right font-mono text-ink-900">{p}</td>
                 </tr>
               ))}
             </tbody>
