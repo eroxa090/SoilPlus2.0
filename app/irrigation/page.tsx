@@ -17,7 +17,7 @@ import {
 import { useSensor } from "@/components/SensorProvider";
 import { useLang } from "@/components/LanguageProvider";
 import PageHeader from "@/components/PageHeader";
-import { Reveal, StaggerItem, StaggerList } from "@/components/motion/Motion";
+import { AnimatedNumber, Reveal, StaggerItem, StaggerList } from "@/components/motion/Motion";
 import { CROPS, type Crop } from "@/lib/crops";
 import { computeIrrigation, URGENCY_STYLE } from "@/lib/irrigation";
 import { IRRIGATION } from "@/lib/i18n/pages/irrigation";
@@ -157,7 +157,16 @@ export default function IrrigationPage() {
               {CROPS.map((c, i) => {
                 const active = c.id === cropId;
                 return (
-                  <StaggerItem key={c.id}>
+                  <StaggerItem key={c.id} className="relative">
+                    {/* dashed "cut here" line that hops to the chosen packet */}
+                    {active && (
+                      <motion.span
+                        layoutId="crop-pick"
+                        aria-hidden
+                        className="pointer-events-none absolute -inset-1.5 rounded-lg border-2 border-dashed border-stamp-500"
+                        transition={{ type: "spring", bounce: 0.25, visualDuration: 0.35 }}
+                      />
+                    )}
                     <button
                       onClick={() => setCropId(c.id)}
                       aria-pressed={active}
@@ -378,17 +387,36 @@ export default function IrrigationPage() {
               <p className="font-display text-xs uppercase tracking-[0.18em] text-ink-500">
                 {none ? t.noWatering : t.thisWatering}
               </p>
-              <motion.p
-                key={none ? 0 : result.litresPerEvent}
-                initial={{ opacity: 0.4, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="mt-2 font-display text-[68px] font-semibold leading-none text-ink-900"
-              >
-                {fmt(none ? 0 : result.litresPerEvent)}
-              </motion.p>
+              <p className="mt-2 font-display text-[68px] font-semibold leading-none text-ink-900">
+                <AnimatedNumber value={none ? 0 : result.litresPerEvent} locale={locale} />
+              </p>
               <p className="mt-1 font-display text-base uppercase tracking-[0.2em] text-leaf-700">{t.litres}</p>
               {!none && <p className="mt-1 text-xs text-ink-500">{t.perM2(result.litresPerM2PerEvent)}</p>}
+
+              {/* Water gauge: soil moisture now against the crop's norm */}
+              <div className="mt-6 text-left">
+                <div className="flex justify-between font-mono text-[11px] text-ink-500">
+                  <span>{t.metrics.moist} {reading.moist}%</span>
+                  <span>{t.band} {crop.wOptMin}–{crop.wOptMax}%</span>
+                </div>
+                <div className="relative mt-1.5 h-3 overflow-hidden rounded-sm border-2 border-ink-900/15 bg-paper">
+                  <motion.div
+                    aria-hidden
+                    className="absolute inset-y-0 left-0 w-full bg-aqua-500/75"
+                    style={{ originX: 0 }}
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: Math.min(Math.max(reading.moist, 0), 100) / 100 }}
+                    transition={{ type: "spring", bounce: 0.2, visualDuration: 0.8, delay: 0.3 }}
+                  />
+                  <motion.div
+                    aria-hidden
+                    className="absolute inset-0 bg-leaf-600/40"
+                    initial={false}
+                    animate={{ clipPath: `inset(0 ${100 - crop.wOptMax}% 0 ${crop.wOptMin}%)` }}
+                    transition={{ type: "spring", bounce: 0.15, visualDuration: 0.5 }}
+                  />
+                </div>
+              </div>
 
               <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-md border-2 border-ink-900/10 bg-ink-900/10 text-left">
                 {[
