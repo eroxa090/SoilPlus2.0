@@ -326,6 +326,14 @@
   transform-origin: 50% 26px;
 }
 
+/* Each page rises onto the paper. "backwards", not "both": a transform left
+   on the wrapper would trap position:fixed children for the page's lifetime. */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+.page-in { animation: page-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+
 /* Endless printed tape */
 @keyframes ticker {
   from { transform: translateX(0); }
@@ -337,6 +345,24 @@
   animation: ticker 38s linear infinite;
 }
 .ticker:hover .ticker-track { animation-play-state: paused; }
+
+/* Three seeds hopping in turn — the "working on it" indicator */
+@keyframes seed-hop {
+  0%, 60%, 100% { transform: translateY(0) rotate(var(--tilt)); }
+  30%           { transform: translateY(-9px) rotate(calc(var(--tilt) * -1)); }
+}
+.seeds { display: inline-flex; align-items: flex-end; gap: 5px; height: 18px; }
+.seeds > i {
+  --tilt: 18deg;
+  display: block;
+  width: 7px;
+  height: 11px;
+  border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%;
+  background: currentColor;
+  animation: seed-hop 1.1s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+}
+.seeds > i:nth-child(2) { --tilt: -12deg; animation-delay: 0.14s; }
+.seeds > i:nth-child(3) { --tilt: 24deg;  animation-delay: 0.28s; }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }

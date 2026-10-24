@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useId, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { DICTS, LANG_COOKIE, type Dict, type Lang } from "@/lib/i18n/dict";
 
 /**
@@ -58,6 +59,8 @@ export function LangSwitch({
 }) {
   const { lang, setLang, t } = useLang();
   const dark = tone === "dark";
+  // One pill per switch instance, so two switches on a page don't share it.
+  const pill = useId();
   return (
     <div
       role="group"
@@ -71,13 +74,20 @@ export function LangSwitch({
             type="button"
             onClick={() => setLang(l)}
             aria-pressed={lang === l}
-            className={`rounded-sm px-1.5 py-0.5 uppercase transition-colors ${
+            className={`relative rounded-sm px-1.5 py-0.5 uppercase transition-colors ${
               lang === l
-                ? dark ? "bg-amber-100 text-ink-900" : "bg-ink-900 text-paper"
+                ? dark ? "text-ink-900" : "text-paper"
                 : dark ? "text-paper/60 hover:text-paper" : "text-ink-500 hover:text-ink-900"
             }`}
           >
-            {l}
+            {lang === l && (
+              <motion.span
+                layoutId={pill}
+                className={`absolute inset-0 rounded-sm ${dark ? "bg-amber-100" : "bg-ink-900"}`}
+                transition={{ type: "spring", stiffness: 520, damping: 34 }}
+              />
+            )}
+            <span className="relative">{l}</span>
           </button>
         </span>
       ))}

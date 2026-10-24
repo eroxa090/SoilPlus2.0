@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Lock, LogOut, Menu, User as UserIcon, X } from "lucide-react";
 import { useSensor } from "@/components/SensorProvider";
 import { useUser } from "@/components/UserProvider";
 import { LangSwitch, useLang } from "@/components/LanguageProvider";
+import { ScrollThread } from "@/components/motion/Motion";
 import type { Dict } from "@/lib/i18n/dict";
 import type { SocketStatus } from "@/hooks/useSoilSocket";
 
@@ -121,6 +122,8 @@ export default function Navbar() {
       >
         {/* stitched seam along the bottom edge */}
         <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-1.5 border-t-2 border-dashed border-ink-900/25" />
+        {/* red thread sewn along that seam as you read down the page */}
+        <ScrollThread className="pointer-events-none absolute inset-x-0 bottom-1.5 h-0.5 bg-stamp-500" />
 
         <nav className="relative mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-6 px-5 sm:px-8">
           <Link href="/" className="group flex shrink-0 items-center gap-2.5 text-ink-900">
@@ -176,19 +179,32 @@ export default function Navbar() {
       </div>
 
       {/* --------------------------------- mobile / tablet sheet ---- */}
+      <AnimatePresence initial={false}>
       {open && (
         <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
+          key="sheet"
+          initial={{ height: 0 }}
+          animate={{ height: "auto" }}
+          exit={{ height: 0 }}
+          transition={{ type: "spring", bounce: 0.15, visualDuration: 0.32 }}
+          style={{ overflow: "hidden" }}
           className="border-b-2 border-ink-900/80 bg-paper shadow-soft xl:hidden"
         >
-          <ul className="mx-auto grid max-w-[1280px] gap-0.5 px-5 py-3 sm:grid-cols-2 sm:px-8">
+          <motion.ul
+            initial="hidden"
+            animate="shown"
+            variants={{ shown: { transition: { staggerChildren: 0.035, delayChildren: 0.05 } } }}
+            className="mx-auto grid max-w-[1280px] gap-0.5 px-5 py-3 sm:grid-cols-2 sm:px-8"
+          >
             {LINKS.map((l) => {
               const active = isActive(pathname, l.href);
               const gated = l.owner && !isOwner;
               return (
-                <li key={l.href}>
+                <motion.li
+                  key={l.href}
+                  variants={{ hidden: { opacity: 0, x: -14 }, shown: { opacity: 1, x: 0 } }}
+                  transition={{ type: "spring", bounce: 0.2, visualDuration: 0.3 }}
+                >
                   <Link
                     href={l.href}
                     aria-current={active ? "page" : undefined}
@@ -199,15 +215,16 @@ export default function Navbar() {
                     {gated && <Lock className="h-3.5 w-3.5 opacity-60" />}
                     {t.nav[l.key]}
                   </Link>
-                </li>
+                </motion.li>
               );
             })}
-          </ul>
+          </motion.ul>
           <div className="mx-auto max-w-[1280px] border-t border-dashed border-ink-900/25 px-5 py-3 sm:px-8 md:hidden">
             {connectButton}
           </div>
         </motion.div>
       )}
+      </AnimatePresence>
     </header>
   );
 }
