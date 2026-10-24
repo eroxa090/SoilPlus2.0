@@ -106,6 +106,7 @@ export default function ChatPage() {
   return (
     <main className="mx-auto max-w-[1280px] px-5 pb-24 pt-10 sm:px-8">
       <PageHeader
+        photo="steppe"
         home={tc.common.home}
         crumb={t.crumb}
         eyebrow={t.eyebrow}

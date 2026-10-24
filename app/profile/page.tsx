@@ -66,6 +66,7 @@ export default function ProfilePage() {
   return (
     <main className="mx-auto max-w-[1180px] px-5 pb-24 pt-10 sm:px-8">
       <PageHeader
+        photo="wheat"
         home={tc.common.home}
         crumb={t.crumb}
         eyebrow={t.eyebrow}

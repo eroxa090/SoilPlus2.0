@@ -138,7 +138,7 @@ export default function DiagnosePage() {
 
   return (
     <main className="mx-auto max-w-[1180px] px-5 pb-24 pt-10 sm:px-8">
-      <PageHeader home={tc.common.home} crumb={t.crumb} eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
+      <PageHeader photo="wheat" home={tc.common.home} crumb={t.crumb} eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
 
       <div className="mt-10 grid gap-6 lg:grid-cols-5">
         {/* Upload pane */}

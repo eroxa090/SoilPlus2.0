@@ -104,7 +104,7 @@ export default function WeatherPage() {
 
   return (
     <main className="mx-auto max-w-[1180px] px-5 pb-24 pt-10 sm:px-8">
-      <PageHeader home={tc.common.home} crumb={t.crumb} eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
+      <PageHeader photo="steppe" home={tc.common.home} crumb={t.crumb} eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
 
       <Reveal className="mt-8">
         <form onSubmit={onSearch} className="flex flex-wrap items-center gap-2 rounded-md border-2 border-ink-900/80 bg-white p-2 shadow-card">

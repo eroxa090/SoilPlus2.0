@@ -7,7 +7,6 @@ import { AlertCircle, Apple, CheckCircle2, Flower2, Loader2, Mountain, Sparkles,
 import { useSensor } from "@/components/SensorProvider";
 import { useLang } from "@/components/LanguageProvider";
 import PageHeader from "@/components/PageHeader";
-import OrnamentBand from "@/components/OrnamentBand";
 import { CountUp, Reveal, StaggerItem, StaggerList, Tilt } from "@/components/motion/Motion";
 import { HERITAGE } from "@/lib/i18n/pages/heritage";
 
@@ -108,6 +107,7 @@ export default function HeritagePage() {
   return (
     <main className="mx-auto max-w-[1280px] px-5 pb-24 pt-10 sm:px-8">
       <PageHeader
+        photo="steppe"
         home={tc.common.home}
         crumb={t.crumb}
         eyebrow={t.eyebrow}
@@ -131,8 +131,6 @@ export default function HeritagePage() {
           </span>
         }
       />
-
-      <OrnamentBand className="mt-8 text-amber-600/70" height={32} />
 
       {/* Plant selector — three heritage specimens */}
       <StaggerList className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3">

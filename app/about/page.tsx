@@ -20,7 +20,7 @@ export default async function AboutPage() {
 
   return (
     <main className="mx-auto max-w-[1180px] px-5 pb-24 pt-10 sm:px-8">
-      <PageHeader home={tc.common.home} crumb={t.crumb} eyebrow={t.eyebrow} title={t.title} lead={t.subtitle} />
+      <PageHeader photo="wheat" home={tc.common.home} crumb={t.crumb} eyebrow={t.eyebrow} title={t.title} lead={t.subtitle} />
 
       {/* HERO */}
       <section className="mt-10 grid items-start gap-12 lg:grid-cols-[1.15fr_1fr]">
