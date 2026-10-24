@@ -10,6 +10,7 @@ import {
 import { useId } from "react";
 import type { LucideIcon } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
+import { AnimatedNumber } from "@/components/motion/Motion";
 import { DASHBOARD } from "@/lib/i18n/pages/dashboard";
 
 type Point = { t: number; value: number };
@@ -91,7 +92,7 @@ export default function SensorTile({
 
       <div className="flex items-baseline gap-2">
         <span className="font-mono text-[44px] leading-none text-ink-900">
-          {value === null ? "—" : value.toFixed(precision)}
+          {value === null ? "—" : <AnimatedNumber value={value} locale="en-US" decimals={precision} grouping={false} />}
         </span>
         <span className="text-sm text-ink-400">{unit}</span>
       </div>

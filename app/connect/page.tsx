@@ -6,7 +6,7 @@ import { AlertCircle, AlertTriangle, ArrowRight, Check, Copy, Radio, Wifi } from
 import { useSensor } from "@/components/SensorProvider";
 import { useLang } from "@/components/LanguageProvider";
 import PageHeader from "@/components/PageHeader";
-import { Reveal, SewLine, StaggerItem, StaggerList } from "@/components/motion/Motion";
+import { AnimatedNumber, DrawnCheck, Reveal, SewLine, StaggerItem, StaggerList } from "@/components/motion/Motion";
 import { CONNECT } from "@/lib/i18n/pages/connect";
 
 // Must match SOILPLUS_WIFI_SSID in firmware/soilplus/secrets.h (gitignored)
@@ -87,7 +87,7 @@ export default function ConnectPage() {
                         : "border-ink-900/30 bg-paper text-ink-400"
                   }`}
                 >
-                  {done ? <Check className="h-5 w-5" strokeWidth={3} /> : n}
+                  {done ? <DrawnCheck className="h-5 w-5" /> : n}
                 </span>
                 <p className={`mt-3 font-display text-lg uppercase tracking-wide ${active ? "text-ink-900" : "text-ink-700"}`}>{s.title}</p>
                 <p className="mt-1 text-[13px] leading-snug text-ink-500">{s.sub}</p>
@@ -186,15 +186,15 @@ export default function ConnectPage() {
             {latest ? (
               <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md bg-paper/10">
                 {[
-                  { label: t.readings.temp,  v: latest.temp.toFixed(1), u: "°C" },
-                  { label: t.readings.ph,    v: latest.ph.toFixed(2),   u: "" },
-                  { label: t.readings.tds,   v: String(latest.tds),     u: "ppm" },
-                  { label: t.readings.moist, v: String(latest.moist),   u: "%" },
+                  { label: t.readings.temp,  v: latest.temp,  d: 1, u: "°C" },
+                  { label: t.readings.ph,    v: latest.ph,    d: 2, u: "" },
+                  { label: t.readings.tds,   v: latest.tds,   d: 0, u: "ppm" },
+                  { label: t.readings.moist, v: latest.moist, d: 0, u: "%" },
                 ].map((m) => (
                   <div key={m.label} className="bg-ink-900 p-5">
                     <dt className="font-display text-xs uppercase tracking-[0.14em] text-paper/60">{m.label}</dt>
                     <dd className="mt-1 font-mono text-amber-100">
-                      <span className="text-4xl">{m.v}</span>
+                      <AnimatedNumber value={m.v} locale="en-US" decimals={m.d} grouping={false} className="text-4xl" />
                       {m.u && <span className="ml-1 text-sm text-paper/60">{m.u}</span>}
                     </dd>
                   </div>

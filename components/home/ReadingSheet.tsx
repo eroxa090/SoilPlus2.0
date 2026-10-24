@@ -2,6 +2,7 @@
 
 import { useSensor } from "@/components/SensorProvider";
 import { useLang } from "@/components/LanguageProvider";
+import { AnimatedNumber } from "@/components/motion/Motion";
 import type { SoilReading } from "@/hooks/useSoilSocket";
 
 /**
@@ -40,11 +41,7 @@ export default function ReadingSheet() {
 
   const live = status === "connected" && !!latest;
   const reading = live ? latest! : SAMPLE;
-  const fmt = (v: number, d: number) =>
-    v.toLocaleString(lang === "ru" ? "ru-RU" : "en-US", {
-      minimumFractionDigits: d,
-      maximumFractionDigits: d,
-    });
+  const locale = lang === "ru" ? "ru-RU" : "en-US";
 
   return (
     <div className="relative mx-auto w-full max-w-[400px] pt-14 lg:mx-0 lg:justify-self-end">
@@ -82,7 +79,7 @@ export default function ReadingSheet() {
                   <div className="flex items-baseline justify-between">
                     <dt className="font-display text-base tracking-wide text-ink-700">{s[r.label]}</dt>
                     <dd className="font-mono text-ink-900">
-                      <span className="text-[26px] leading-none">{fmt(v, r.digits)}</span>
+                      <AnimatedNumber value={v} locale={locale} decimals={r.digits} className="text-[26px] leading-none" />
                       {r.unit && <span className="ml-1 text-xs text-ink-500">{r.unit}</span>}
                     </dd>
                   </div>
