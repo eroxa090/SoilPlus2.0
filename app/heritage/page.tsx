@@ -2,27 +2,23 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  AlertCircle,
-  Apple,
-  CheckCircle2,
-  Flower2,
-  Loader2,
-  Mountain,
-  Sparkles,
-  TreeDeciduous,
-  WifiOff,
-} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle, Apple, CheckCircle2, Flower2, Loader2, Mountain, Sparkles, TreeDeciduous, WifiOff } from "lucide-react";
 import { useSensor } from "@/components/SensorProvider";
+import { useLang } from "@/components/LanguageProvider";
+import PageHeader from "@/components/PageHeader";
+import OrnamentBand from "@/components/OrnamentBand";
+import { CountUp, Reveal, StaggerItem, StaggerList } from "@/components/motion/Motion";
+import { HERITAGE } from "@/lib/i18n/pages/heritage";
+
+type PlantId = "aport" | "tulip" | "saxaul";
 
 type Plant = {
-  id: "aport" | "tulip" | "saxaul";
+  id: PlantId;
+  /** English name — the analyze API keys its plant profiles by it. */
   name: string;
   latin: string;
-  nameRu: string;
   icon: typeof Apple;
-  story: string;
-  place: string;
   bands: {
     temp: [number, number];
     ph: [number, number];
@@ -36,33 +32,21 @@ const PLANTS: Plant[] = [
     id: "aport",
     name: "Almaty Aport Apple",
     latin: "Malus domestica 'Aport'",
-    nameRu: "Алматинский Апорт",
     icon: Apple,
-    story:
-      "The mother apple of Central Asia — the variety that made Alma-Ata mean \"father of apples\" before the Soviet era nearly wiped its orchards out.",
-    place: "Trans-Ili Alatau foothills, 900–1400 m",
     bands: { temp: [12, 22], ph: [6.0, 7.0], tds: [300, 900], moist: [40, 65] },
   },
   {
     id: "tulip",
     name: "Greig's Tulip",
     latin: "Tulipa greigii",
-    nameRu: "Тюльпан Грейга",
     icon: Flower2,
-    story:
-      "A wild tulip of limestone steppe — the progenitor of every garden tulip on earth, and a symbol of southern Kazakhstan's spring.",
-    place: "Karatau & Boroldai ridges, Turkistan region",
     bands: { temp: [8, 18], ph: [6.5, 7.5], tds: [150, 600], moist: [25, 45] },
   },
   {
     id: "saxaul",
     name: "Saxaul Tree",
     latin: "Haloxylon aphyllum",
-    nameRu: "Саксаул",
     icon: TreeDeciduous,
-    story:
-      "The halophyte that stitches the Aral and Betpaq-Dala deserts together. Without it the steppe breathes sand; with it, the soil holds.",
-    place: "Aral-Caspian lowland and Betpaq-Dala desert",
     bands: { temp: [15, 35], ph: [7.5, 9.0], tds: [800, 2500], moist: [8, 25] },
   },
 ];
@@ -78,6 +62,8 @@ type AnalysisResult = {
 
 export default function HeritagePage() {
   const { latest, status } = useSensor();
+  const { lang, t: tc } = useLang();
+  const t = HERITAGE[lang];
   const reading = latest ?? FALLBACK;
 
   const [selected, setSelected] = useState<Plant>(PLANTS[0]);
@@ -86,6 +72,7 @@ export default function HeritagePage() {
   const [error, setError] = useState<string | null>(null);
 
   const quick = useMemo(() => quickScore(reading, selected), [reading, selected]);
+  const sel = t.plants[selected.id];
 
   async function analyze() {
     setLoading(true);
@@ -99,221 +86,199 @@ export default function HeritagePage() {
           plant: {
             id: selected.id,
             name: selected.name,
+            nameRu: HERITAGE.ru.plants[selected.id].name,
             latin: selected.latin,
-            story: selected.story,
+            story: sel.story,
           },
+          lang,
         }),
       });
       const json = (await res.json()) as AnalysisResult & { error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Analysis failed");
+      if (!res.ok) throw new Error(json.error ?? t.failed);
       setResult(json);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Analysis failed");
+      setError(e instanceof Error ? e.message : t.failed);
     } finally {
       setLoading(false);
     }
   }
 
+  const live = status === "connected";
+
   return (
     <main className="mx-auto max-w-[1280px] px-5 pb-24 pt-10 sm:px-8">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <span className="label-eyebrow">Cultural Heritage</span>
-          <h1 className="mt-2 font-display text-4xl tracking-tightx text-ink-900 sm:text-5xl">
-            Can this soil hold a memory?
-          </h1>
-          <p className="mt-3 max-w-xl text-ink-500">
-            Score your plot against three plants that define the Kazakh
-            landscape. The AI reads your live chemistry and answers in three
-            sentences — diagnosis, consequence, and cultural stake.
-          </p>
-        </div>
-        <span
-          className={`chip ${
-            status === "connected" ? "chip-leaf" : "chip-ghost"
-          }`}
-        >
-          {status === "connected" ? (
-            <>
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inset-0 animate-ping rounded-full bg-leaf-500/70" />
-                <span className="relative h-1.5 w-1.5 rounded-full bg-leaf-500" />
-              </span>
-              Live stream
-            </>
-          ) : (
-            <>
-              <WifiOff className="h-3 w-3" /> Demo soil
-            </>
-          )}
-        </span>
-      </div>
+      <PageHeader
+        home={tc.common.home}
+        crumb={t.crumb}
+        eyebrow={t.eyebrow}
+        title={t.title}
+        lead={t.lead}
+        aside={
+          <span className={`chip ${live ? "chip-leaf" : "chip-ghost"}`}>
+            {live ? (
+              <>
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inset-0 animate-ping rounded-full bg-leaf-500/70" />
+                  <span className="relative h-1.5 w-1.5 rounded-full bg-leaf-500" />
+                </span>
+                {t.live}
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3 w-3" /> {t.demo}
+              </>
+            )}
+          </span>
+        }
+      />
 
-      {/* Plant selector */}
-      <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-        {PLANTS.map((p) => {
+      <OrnamentBand className="mt-8 text-amber-600/70" height={32} />
+
+      {/* Plant selector — three heritage specimens */}
+      <StaggerList className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3">
+        {PLANTS.map((p, i) => {
           const active = selected.id === p.id;
           const Icon = p.icon;
+          const pt = t.plants[p.id];
           return (
-            <button
-              key={p.id}
-              onClick={() => {
-                setSelected(p);
-                setResult(null);
-              }}
-              className={`card text-left transition ${
-                active
-                  ? "ring-2 ring-leaf-500"
-                  : "card-hover"
-              } p-5`}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`grid h-10 w-10 place-items-center rounded-xl ${
-                    active ? "bg-leaf-600 text-white" : "bg-leaf-50 text-leaf-700"
+            <StaggerItem key={p.id}>
+              <button
+                onClick={() => {
+                  setSelected(p);
+                  setResult(null);
+                }}
+                aria-pressed={active}
+                className={`relative flex h-full w-full flex-col overflow-hidden rounded-md border-2 bg-white text-left transition-all duration-300 ${
+                  active
+                    ? "-translate-y-1 border-ink-900 shadow-soft"
+                    : "border-ink-900/15 shadow-card hover:-translate-y-0.5 hover:border-ink-900/40"
+                }`}
+              >
+                <span
+                  className={`flex items-center justify-between px-4 py-2 font-mono text-[11px] transition-colors ${
+                    active ? "bg-stamp-500 text-paper" : "bg-leaf-700 text-leaf-100"
                   }`}
                 >
-                  <Icon className="h-4 w-4" strokeWidth={1.8} />
-                </div>
-                <div>
-                  <p className="font-display text-base font-semibold text-ink-900">
-                    {p.name}
-                  </p>
-                  <p className="text-[11px] text-ink-400">
-                    {p.nameRu} · <em>{p.latin}</em>
-                  </p>
-                </div>
-              </div>
-              <p className="mt-3 text-sm text-ink-500">{p.story}</p>
-              <p className="mt-3 flex items-center gap-1.5 text-[11px] text-ink-400">
-                <Mountain className="h-3 w-3" /> {p.place}
-              </p>
-            </button>
+                  <span>№ 0{i + 1}</span>
+                  <em className="not-italic">{p.latin}</em>
+                </span>
+                <span className="flex flex-1 flex-col p-5">
+                  <span className="flex items-center gap-3">
+                    <span
+                      className={`grid h-11 w-11 place-items-center rounded-full border-2 transition-colors ${
+                        active ? "border-stamp-500 text-stamp-500" : "border-ink-900/20 text-leaf-700"
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" strokeWidth={2} />
+                    </span>
+                    <span className="font-display text-xl uppercase leading-tight text-ink-900">{pt.name}</span>
+                  </span>
+                  <span className="mt-4 block text-sm leading-relaxed text-ink-500">{pt.story}</span>
+                  <span className="mt-auto flex items-center gap-1.5 pt-4 font-mono text-[11px] text-ink-400">
+                    <Mountain className="h-3 w-3" /> {pt.place}
+                  </span>
+                </span>
+              </button>
+            </StaggerItem>
           );
         })}
-      </div>
+      </StaggerList>
 
       {/* Analysis */}
-      <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-[1.1fr_1fr]">
+      <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_1fr]">
         {/* Left: bands vs reading */}
-        <div className="card p-7 sm:p-8">
-          <p className="label-eyebrow">Proximity to ideal bands</p>
-          <div className="mt-4 space-y-4">
-            <BandRow
-              label="Temperature"
-              unit="°C"
-              value={reading.temp}
-              band={selected.bands.temp}
-              score={quick.parts.temp}
-            />
-            <BandRow
-              label="pH"
-              unit=""
-              value={reading.ph}
-              band={selected.bands.ph}
-              score={quick.parts.ph}
-            />
-            <BandRow
-              label="TDS"
-              unit=" ppm"
-              value={reading.tds}
-              band={selected.bands.tds}
-              score={quick.parts.tds}
-            />
-            <BandRow
-              label="Moisture"
-              unit="%"
-              value={reading.moist}
-              band={selected.bands.moist}
-              score={quick.parts.moist}
-            />
+        <Reveal className="card p-7 sm:p-8">
+          <p className="label-eyebrow">{t.proximity}</p>
+          <div className="mt-5 space-y-5">
+            {(["temp", "ph", "tds", "moist"] as const).map((k) => (
+              <BandRow
+                key={k}
+                label={t.metrics[k]}
+                ideal={t.ideal}
+                unit={k === "temp" ? "°C" : k === "tds" ? " ppm" : k === "moist" ? "%" : ""}
+                digits={k === "ph" ? 2 : k === "tds" ? 0 : 1}
+                value={reading[k]}
+                band={selected.bands[k]}
+                score={quick.parts[k]}
+              />
+            ))}
           </div>
 
-          <hr className="my-6 border-ink-100" />
+          <div className="my-7 border-t-2 border-dashed border-ink-900/15" />
 
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="label-eyebrow">Baseline viability</p>
-              <p className="mt-1 font-display text-3xl font-semibold text-ink-900">
+              <p className="label-eyebrow">{t.baseline}</p>
+              <p className="mt-2 font-display text-5xl font-semibold text-ink-900">
                 {quick.score}
-                <span className="ml-1 text-base font-normal text-ink-400">/ 100</span>
+                <span className="ml-1 text-lg font-normal text-ink-400">/ 100</span>
               </p>
-              <p className="mt-1 text-xs text-ink-500">
-                Weighted proximity across all four metrics.
-              </p>
+              <p className="mt-1 text-xs text-ink-500">{t.baselineHint}</p>
             </div>
-            <button
-              onClick={analyze}
-              disabled={loading}
-              className="btn btn-primary disabled:opacity-40"
-            >
+            <button onClick={analyze} disabled={loading} className="btn btn-stamp px-5 py-3 disabled:opacity-50">
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Analysing…
+                  <Loader2 className="h-4 w-4 animate-spin" /> {t.analysing}
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4" /> Run AI analysis
+                  <Sparkles className="h-4 w-4" strokeWidth={2.5} /> {t.run}
                 </>
               )}
             </button>
           </div>
 
           {error && (
-            <p className="mt-3 flex items-center gap-2 text-sm text-rose-600">
+            <p role="alert" className="mt-3 flex items-center gap-2 text-sm text-stamp-600">
               <AlertCircle className="h-4 w-4" /> {error}
             </p>
           )}
-        </div>
+        </Reveal>
 
-        {/* Right: verdict */}
-        <div className="card overflow-hidden p-0">
-          <div className="border-b border-ink-100 bg-paper-alt px-5 py-3">
-            <span className="label-eyebrow">AI verdict</span>
+        {/* Right: verdict — a parchment certificate */}
+        <Reveal delay={0.1} className="stitch flex flex-col overflow-hidden rounded-md bg-[#F6E9C8] shadow-soft">
+          <div className="bg-ink-900 px-6 py-3">
+            <span className="font-display text-sm uppercase tracking-[0.18em] text-amber-100">{t.verdict}</span>
           </div>
-          <div className="p-7 sm:p-8">
-            {result ? (
-              <>
-                <div className="flex items-baseline gap-3">
-                  <span className="font-display text-5xl font-semibold text-ink-900 tabular-nums">
-                    {result.score}
-                  </span>
-                  <span className="text-sm text-ink-400">
-                    / 100 · {result.model}
-                  </span>
-                </div>
-                <p className="mt-4 text-base leading-relaxed text-ink-700">
-                  {result.verdict}
-                </p>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <Link href="/chat" className="btn btn-ghost">
-                    Ask the agronomist for next steps
-                  </Link>
-                  <Link href="/irrigation" className="btn btn-ghost">
-                    Irrigation plan
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-start gap-4">
-                <div className="grid h-12 w-12 place-items-center rounded-full bg-leaf-50 text-leaf-700">
-                  <Sparkles className="h-5 w-5" strokeWidth={1.6} />
-                </div>
-                <p className="font-display text-lg text-ink-900">
-                  Ready when you are.
-                </p>
-                <p className="text-sm text-ink-500">
-                  Gemini 2.5 Flash will compare today&apos;s {reading.temp.toFixed(1)}
-                  °C / pH {reading.ph.toFixed(2)} / {reading.tds} ppm / {reading.moist}
-                  % against the cultural profile of {selected.name}, adjust within ±12
-                  points, and return a three-sentence verdict — diagnosis, biological
-                  consequence, cultural stake.
-                </p>
-              </div>
-            )}
+          <div className="flex-1 p-7 sm:p-8">
+            <AnimatePresence mode="wait">
+              {result ? (
+                <motion.div
+                  key="result"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="stamp h-24 w-24 -rotate-6 text-4xl">
+                      <CountUp value={String(result.score)} />
+                    </span>
+                    <span className="font-mono text-sm text-ink-500">/ 100 · {result.model}</span>
+                  </div>
+                  <p className="mt-6 font-display text-xl leading-relaxed text-ink-900">{result.verdict}</p>
+                  <div className="mt-7 flex flex-wrap gap-2">
+                    <Link href="/chat" className="btn btn-primary">{t.askNext}</Link>
+                    <Link href="/irrigation" className="btn btn-ghost">{t.irrigation}</Link>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div key="idle" exit={{ opacity: 0 }} className="flex flex-col items-start gap-4">
+                  <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-dashed border-ink-900/30 text-leaf-700">
+                    <Sparkles className="h-6 w-6" strokeWidth={1.8} />
+                  </div>
+                  <p className="font-hand text-3xl text-ink-900">{t.ready}</p>
+                  <p className="text-sm leading-relaxed text-ink-700">
+                    {t.readyBody(
+                      `${reading.temp.toFixed(1)} °C / pH ${reading.ph.toFixed(2)} / ${reading.tds} ppm / ${reading.moist}%`,
+                      sel.name,
+                    )}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        </div>
+        </Reveal>
       </div>
     </main>
   );
@@ -349,19 +314,23 @@ function quickScore(
 
 function BandRow({
   label,
+  ideal,
   unit,
+  digits,
   value,
   band,
   score,
 }: {
   label: string;
+  ideal: string;
   unit: string;
+  digits: number;
   value: number;
   band: [number, number];
   score: number;
 }) {
   const ok = value >= band[0] && value <= band[1];
-  // Visual range: pad 30% each side of the band for layout.
+  // Visual range: pad 60% of the band width on each side.
   const span = band[1] - band[0] || 1;
   const min = band[0] - span * 0.6;
   const max = band[1] + span * 0.6;
@@ -371,31 +340,28 @@ function BandRow({
 
   return (
     <div>
-      <div className="flex items-baseline justify-between">
-        <span className="flex items-center gap-2 text-sm font-medium text-ink-700">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+        <span className="flex items-center gap-2 font-display text-base uppercase tracking-wide text-ink-900">
           {ok ? (
-            <CheckCircle2 className="h-3.5 w-3.5 text-leaf-600" />
+            <CheckCircle2 className="h-4 w-4 text-leaf-600" strokeWidth={2.5} />
           ) : (
-            <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+            <AlertCircle className="h-4 w-4 text-amber-500" strokeWidth={2.5} />
           )}
           {label}
         </span>
         <span className="font-mono text-xs text-ink-500">
-          {value.toFixed(label === "pH" ? 2 : label === "TDS" ? 0 : 1)}
-          {unit} · ideal {band[0]}–{band[1]}
+          {value.toFixed(digits)}
+          {unit} · {ideal} {band[0]}–{band[1]}
           {unit} · {Math.round(score)}/100
         </span>
       </div>
-      <div className="relative mt-2 h-2 overflow-hidden rounded-full bg-ink-100">
-        <div
-          className="absolute inset-y-0 bg-leaf-100"
-          style={{ left: `${bandLeft}%`, width: `${bandWidth}%` }}
-        />
-        <div
-          className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white ${
-            ok ? "bg-leaf-600" : "bg-amber-500"
-          }`}
-          style={{ left: `${pct}%` }}
+      <div className="relative mt-2 h-2.5 border border-ink-900/30 bg-paper">
+        <div className="absolute inset-y-0 bg-leaf-300/60" style={{ left: `${bandLeft}%`, width: `${bandWidth}%` }} />
+        <motion.div
+          className={`absolute -top-1 h-4 w-[4px] -translate-x-1/2 ${ok ? "bg-leaf-800" : "bg-stamp-500"}`}
+          initial={false}
+          animate={{ left: `${pct}%` }}
+          transition={{ type: "spring", stiffness: 200, damping: 24 }}
         />
       </div>
     </div>

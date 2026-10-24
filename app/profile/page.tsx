@@ -3,20 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  BadgeCheck,
-  Boxes,
-  Calendar,
-  Cpu,
-  Loader2,
-  LogOut,
-  Mail,
-  Package,
-  Shield,
-  ShoppingBag,
-  User as UserIcon,
-} from "lucide-react";
+import { BadgeCheck, Calendar, Loader2, LogOut, Mail, ShoppingBag } from "lucide-react";
 import { useUser } from "@/components/UserProvider";
+import { useLang } from "@/components/LanguageProvider";
+import PageHeader from "@/components/PageHeader";
+import { Reveal, StaggerItem, StaggerList } from "@/components/motion/Motion";
+import { PROFILE } from "@/lib/i18n/pages/profile";
 
 type Order = {
   id: string;
@@ -28,20 +20,20 @@ type Order = {
   country: string;
 };
 
-const STATUS: Record<
-  Order["status"],
-  { label: string; pill: string }
-> = {
-  pending:   { label: "Ожидает оплаты",    pill: "bg-amber-50 text-amber-700 border-amber-200" },
-  paid:      { label: "Оплачен",           pill: "bg-leaf-50 text-leaf-700 border-leaf-200" },
-  shipped:   { label: "Отправлен",         pill: "bg-sky-50 text-sky-700 border-sky-200" },
-  delivered: { label: "Доставлен",         pill: "bg-leaf-50 text-leaf-700 border-leaf-200" },
-  cancelled: { label: "Отменён",           pill: "bg-ink-100/60 text-ink-600 border-ink-200" },
+const STATUS_CHIP: Record<Order["status"], string> = {
+  pending:   "chip-amber",
+  paid:      "chip-leaf",
+  shipped:   "chip-aqua",
+  delivered: "chip-leaf",
+  cancelled: "chip-ghost",
 };
 
 export default function ProfilePage() {
   const { user, loading, logout } = useUser();
   const router = useRouter();
+  const { lang, t: tc } = useLang();
+  const t = PROFILE[lang];
+  const locale = lang === "ru" ? "ru-RU" : "en-US";
   const [orders, setOrders] = useState<Order[] | null>(null);
 
   useEffect(() => {
@@ -64,7 +56,7 @@ export default function ProfilePage() {
     );
   }
 
-  const created = new Date(user.createdAt).toLocaleDateString("ru-RU");
+  const created = new Date(user.createdAt).toLocaleDateString(locale);
 
   async function onLogout() {
     await logout();
@@ -72,172 +64,109 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="mx-auto max-w-[1180px] px-5 py-10 sm:px-8 sm:py-14">
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-leaf-200 bg-leaf-50 px-3 py-1 text-xs font-medium text-leaf-700">
-            <UserIcon className="h-3.5 w-3.5" />
-            Личный кабинет
-          </div>
-          <h1 className="mt-3 font-display text-3xl font-semibold text-ink-900 sm:text-4xl">
-            Привет, {user.name}!
-          </h1>
-          <p className="mt-1 text-sm text-ink-500">
-            <Mail className="mr-1 inline-block h-3 w-3" />
-            {user.email} · зарегистрирован {created}
-          </p>
-        </div>
-        <button onClick={onLogout} className="btn btn-ghost">
-          <LogOut className="h-4 w-4" />
-          Выйти
-        </button>
-      </header>
+    <main className="mx-auto max-w-[1180px] px-5 pb-24 pt-10 sm:px-8">
+      <PageHeader
+        home={tc.common.home}
+        crumb={t.crumb}
+        eyebrow={t.eyebrow}
+        title={t.hello(user.name)}
+        lead={
+          <span className="inline-flex flex-wrap items-center gap-x-2 font-mono text-sm">
+            <Mail className="h-3.5 w-3.5" />
+            {user.email} · {t.since(created)}
+          </span>
+        }
+        aside={
+          <button onClick={onLogout} className="btn btn-ghost">
+            <LogOut className="h-4 w-4" strokeWidth={2.5} />
+            {t.logout}
+          </button>
+        }
+      />
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <InfoCard
-          icon={Shield}
-          title="Роль"
-          value={user.role === "admin" ? "Администратор" : "Пользователь"}
-          hint={user.role === "admin" ? "Доступ ко всем заказам" : "Базовый доступ"}
-        />
-        <InfoCard
-          icon={Cpu}
-          title="Устройство"
-          value={user.deviceOwner ? "Активно" : "Нет"}
-          hint={
-            user.deviceOwner
-              ? "Открыт закрытый Dashboard"
-              : "Закажите, чтобы разблокировать Dashboard"
-          }
-        />
-        <InfoCard
-          icon={Boxes}
-          title="Заказов"
-          value={orders == null ? "…" : String(orders.length)}
-          hint="История ниже"
-        />
-      </section>
+      <StaggerList className="mt-10 grid gap-5 md:grid-cols-3">
+        {[
+          {
+            title: t.role,
+            value: user.role === "admin" ? t.admin : t.user,
+            hint: user.role === "admin" ? t.adminHint : t.userHint,
+          },
+          {
+            title: t.device,
+            value: user.deviceOwner ? t.active : t.none,
+            hint: user.deviceOwner ? t.deviceOn : t.deviceOff,
+          },
+          {
+            title: t.ordersCount,
+            value: orders == null ? "…" : String(orders.length),
+            hint: t.ordersHint,
+          },
+        ].map((c) => (
+          <StaggerItem key={c.title} className="card p-5">
+            <p className="font-display text-xs uppercase tracking-[0.16em] text-ink-500">{c.title}</p>
+            <p className="mt-2 font-display text-3xl uppercase text-ink-900">{c.value}</p>
+            <p className="mt-1 text-xs text-ink-500">{c.hint}</p>
+          </StaggerItem>
+        ))}
+      </StaggerList>
 
       {user.deviceOwner ? (
-        <div className="mt-6 rounded-2xl border border-leaf-200 bg-leaf-50 p-5">
+        <Reveal className="stitch mt-6 rounded-md bg-leaf-50 p-6">
           <div className="flex items-center gap-2 text-leaf-700">
-            <BadgeCheck className="h-5 w-5" />
-            <span className="font-display font-semibold">
-              Закрытая зона разблокирована
-            </span>
+            <BadgeCheck className="h-5 w-5" strokeWidth={2.5} />
+            <span className="font-display text-lg uppercase tracking-wide">{t.unlockedTitle}</span>
           </div>
-          <p className="mt-2 text-sm text-ink-700">
-            Вам открыты все модули ESP32 — живой Dashboard, расчёт полива,
-            AI-агроном с вашим устройством и страница Connect.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link href="/dashboard" className="btn btn-primary">
-              Dashboard
-            </Link>
-            <Link href="/irrigation" className="btn btn-ghost">
-              Irrigation
-            </Link>
-            <Link href="/chat" className="btn btn-ghost">
-              AI Agronomist
-            </Link>
+          <p className="mt-2 max-w-[70ch] text-sm text-ink-700">{t.unlockedBody}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/dashboard" className="btn btn-primary">{t.links.dashboard}</Link>
+            <Link href="/irrigation" className="btn btn-ghost">{t.links.irrigation}</Link>
+            <Link href="/chat" className="btn btn-ghost">{t.links.chat}</Link>
           </div>
-        </div>
+        </Reveal>
       ) : (
-        <div className="mt-6 rounded-2xl border border-ink-100 bg-white p-5">
-          <div className="flex items-center gap-2 text-ink-900">
-            <Package className="h-5 w-5 text-leaf-600" />
-            <span className="font-display font-semibold">
-              Разблокируйте закрытый Dashboard
-            </span>
-          </div>
-          <p className="mt-2 text-sm text-ink-600">
-            Закажите портативное устройство SoilPlus ($70) — получите живой
-            Dashboard, автокалькулятор полива и личного AI-агронома с вашей
-            почвой.
-          </p>
-          <Link href="/shop" className="btn btn-primary mt-3">
-            <ShoppingBag className="h-4 w-4" />
-            Заказать устройство
+        <Reveal className="kraft stitch mt-6 rounded-md p-6 shadow-card">
+          <p className="font-display text-xl uppercase text-ink-900">{t.lockedTitle}</p>
+          <p className="mt-2 max-w-[70ch] text-sm text-ink-900">{t.lockedBody}</p>
+          <Link href="/shop" className="btn btn-stamp mt-4">
+            <ShoppingBag className="h-4 w-4" strokeWidth={2.5} />
+            {t.order}
           </Link>
-        </div>
+        </Reveal>
       )}
 
-      <section className="mt-8">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold text-ink-900">
-          <Boxes className="h-5 w-5 text-leaf-600" />
-          Ваши заказы
-        </h2>
+      <section className="mt-10">
+        <h2 className="mb-4 text-2xl uppercase text-ink-900">{t.orders}</h2>
         {orders == null ? (
-          <div className="rounded-xl border border-ink-100 bg-white p-6 text-center text-sm text-ink-500">
-            <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+          <div className="card p-6 text-center">
+            <Loader2 className="mx-auto h-5 w-5 animate-spin text-ink-400" />
           </div>
         ) : orders.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-ink-200 bg-white/50 p-6 text-center text-sm text-ink-500">
-            Заказов пока нет.{" "}
-            <Link href="/shop" className="text-leaf-700 underline">
-              Перейти в магазин
-            </Link>
+          <div className="rounded-md border-2 border-dashed border-ink-900/20 p-6 text-center text-sm text-ink-500">
+            {t.noOrders}{" "}
+            <Link href="/shop" className="link-quiet text-sm">{t.toShop}</Link>
           </div>
         ) : (
-          <div className="space-y-2">
-            {orders.map((o) => {
-              const s = STATUS[o.status];
-              return (
-                <div
-                  key={o.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-100 bg-white p-4"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.pill}`}
-                      >
-                        {s.label}
-                      </span>
-                      <span className="font-mono text-xs text-ink-500">
-                        #{o.id.slice(0, 8)}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-sm text-ink-700">
-                      {o.quantity} × SoilPlus Sensor Kit · ${o.totalUsd}
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-2 text-xs text-ink-500">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(o.createdAt).toLocaleDateString("ru-RU")} ·{" "}
-                      {o.city}, {o.country}
-                    </div>
+          <StaggerList className="space-y-3">
+            {orders.map((o) => (
+              <StaggerItem key={o.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`chip ${STATUS_CHIP[o.status]}`}>{t.status[o.status]}</span>
+                    <span className="font-mono text-xs text-ink-500">#{o.id.slice(0, 8)}</span>
                   </div>
+                  <p className="mt-1.5 text-sm text-ink-700">
+                    {o.quantity} × {t.kit} · ${o.totalUsd}
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1.5 font-mono text-xs text-ink-500">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(o.createdAt).toLocaleDateString(locale)} · {o.city}, {o.country}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
+              </StaggerItem>
+            ))}
+          </StaggerList>
         )}
       </section>
     </main>
-  );
-}
-
-function InfoCard({
-  icon: Icon,
-  title,
-  value,
-  hint,
-}: {
-  icon: typeof Shield;
-  title: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-ink-100 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2 text-ink-700">
-        <Icon className="h-4 w-4 text-leaf-600" />
-        <span className="text-xs uppercase tracking-wide">{title}</span>
-      </div>
-      <div className="mt-2 font-display text-2xl font-semibold text-ink-900">
-        {value}
-      </div>
-      {hint && <p className="mt-1 text-xs text-ink-500">{hint}</p>}
-    </div>
   );
 }

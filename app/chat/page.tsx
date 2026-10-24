@@ -2,42 +2,26 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowUp,
-  Bot,
-  Droplets,
-  Leaf,
-  Loader2,
-  Radio,
-  Sparkles,
-  Thermometer,
-  User,
-  WifiOff,
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowRight, ArrowUp, Loader2, Radio, WifiOff } from "lucide-react";
 import { useSensor } from "@/components/SensorProvider";
+import { useLang } from "@/components/LanguageProvider";
+import PageHeader from "@/components/PageHeader";
+import { Reveal } from "@/components/motion/Motion";
 import { CROPS } from "@/lib/crops";
+import { CHAT } from "@/lib/i18n/pages/chat";
 
 type Msg = { role: "user" | "assistant"; content: string; ts: number };
 
-const SUGGESTIONS = [
-  "Что я могу посадить на этой почве прямо сейчас?",
-  "Какие у меня риски с текущими показателями?",
-  "Сколько воды нужно для 0.5 га пшеницы?",
-  "Is this soil too salty for tomatoes?",
-];
-
-const GREETING: Msg = {
-  role: "assistant",
-  content:
-    "Здравствуйте. Я SoilPlus Agronomist — вижу ваш ESP32 поток в реальном времени. Спросите меня про риски, норму полива или какие культуры подойдут для текущей почвы. Можно писать на русском или английском.",
-  ts: Date.now(),
-};
-
 export default function ChatPage() {
   const { latest, status, ip } = useSensor();
+  const { lang, t: tc } = useLang();
+  const t = CHAT[lang];
   const [cropId, setCropId] = useState<string>("");
   const [areaM2, setAreaM2] = useState<number>(0);
-  const [messages, setMessages] = useState<Msg[]>([GREETING]);
+  // The greeting is rendered from the dictionary so it follows the language
+  // switch. It is UI-only: Gemini rejects a history that opens with a model turn.
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -89,15 +73,14 @@ export default function ChatPage() {
         }),
       });
       const json = await res.json();
-      const reply: string = json.reply ?? "Пустой ответ от модели.";
+      const reply: string = json.reply ?? t.emptyReply;
       setMessages((m) => [...m, { role: "assistant", content: reply, ts: Date.now() }]);
     } catch (e) {
       setMessages((m) => [
         ...m,
         {
           role: "assistant",
-          content:
-            e instanceof Error ? `Ошибка: ${e.message}` : "Не удалось получить ответ.",
+          content: e instanceof Error ? `${t.errorPrefix}: ${e.message}` : t.failed,
           ts: Date.now(),
         },
       ]);
@@ -118,111 +101,99 @@ export default function ChatPage() {
     }
   };
 
+  const live = status === "connected";
+
   return (
     <main className="mx-auto max-w-[1280px] px-5 pb-24 pt-10 sm:px-8">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <span className="label-eyebrow">AI Agronomist</span>
-          <h1 className="mt-2 font-display text-4xl tracking-tightx text-ink-900 sm:text-5xl">
-            Talk to your field.
-          </h1>
-          <p className="mt-3 max-w-xl text-ink-500">
-            Gemini 2.5 Flash reads the same ESP32 stream you see on the dashboard.
-            Ask about risks, irrigation norms, or which crop fits today&apos;s soil.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`chip ${
-              status === "connected" ? "chip-leaf" : "chip-ghost"
-            }`}
-          >
-            {status === "connected" ? (
-              <>
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inset-0 animate-ping rounded-full bg-leaf-500/70" />
-                  <span className="relative h-1.5 w-1.5 rounded-full bg-leaf-500" />
-                </span>
-                Live stream
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-3 w-3" />
-                Demo mode
-              </>
-            )}
-          </span>
-          {ip && <span className="font-mono text-[11px] text-ink-400">{ip}</span>}
-        </div>
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
-        {/* Chat column */}
-        <div className="card flex flex-col overflow-hidden p-0">
-          {/* Context strip */}
-          <div className="flex flex-wrap items-center gap-3 border-b border-ink-100 bg-paper-alt px-5 py-3 text-xs text-ink-500">
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-leaf-600" />
-              <span className="font-medium text-ink-700">Context</span>
+      <PageHeader
+        home={tc.common.home}
+        crumb={t.crumb}
+        eyebrow={t.eyebrow}
+        title={t.title}
+        lead={t.lead}
+        aside={
+          <div className="flex items-center gap-2">
+            <span className={`chip ${live ? "chip-leaf" : "chip-ghost"}`}>
+              {live ? (
+                <>
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inset-0 animate-ping rounded-full bg-leaf-500/70" />
+                    <span className="relative h-1.5 w-1.5 rounded-full bg-leaf-500" />
+                  </span>
+                  {t.live}
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3 w-3" />
+                  {t.demo}
+                </>
+              )}
             </span>
-            <span className="mx-1 text-ink-200">·</span>
+            {ip && <span className="font-mono text-xs text-ink-500">{ip}</span>}
+          </div>
+        }
+      />
+
+      <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+        {/* Chat column — a field notebook */}
+        <Reveal className="stitch flex flex-col overflow-hidden rounded-md bg-white shadow-soft">
+          {/* Context strip */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-ink-900 px-6 py-3 font-mono text-xs text-paper/70">
+            <span className="font-display text-xs uppercase tracking-[0.16em] text-amber-100">{t.context}</span>
+            <span className="text-paper/30">/</span>
             {latest ? (
-              <span className="font-mono">
-                {latest.temp.toFixed(1)}°C · pH {latest.ph.toFixed(2)} ·{" "}
-                {latest.tds} ppm · {latest.moist}%
+              <span>
+                {latest.temp.toFixed(1)}°C · pH {latest.ph.toFixed(2)} · {latest.tds} ppm · {latest.moist}%
               </span>
             ) : (
-              <span className="font-mono">preview · no device</span>
+              <span>{t.noDevice}</span>
             )}
             {crop && (
               <>
-                <span className="mx-1 text-ink-200">·</span>
-                <span>
-                  {crop.emoji} {crop.name}
-                </span>
+                <span className="text-paper/30">/</span>
+                <span>{lang === "ru" ? crop.nameRu : crop.name}</span>
               </>
             )}
             {areaM2 > 0 && (
               <>
-                <span className="mx-1 text-ink-200">·</span>
+                <span className="text-paper/30">/</span>
                 <span>
-                  {areaM2 >= 10000
-                    ? `${(areaM2 / 10000).toFixed(2)} ha`
-                    : `${areaM2.toFixed(0)} m²`}
+                  {areaM2 >= 10000 ? `${(areaM2 / 10000).toFixed(2)} ${t.ha}` : `${areaM2.toFixed(0)} ${t.m2}`}
                 </span>
               </>
             )}
           </div>
 
-          {/* Messages */}
+          {/* Messages — ruled notebook paper */}
           <div
             ref={scrollerRef}
-            className="min-h-[420px] flex-1 space-y-5 overflow-y-auto px-5 py-6 sm:px-7"
+            className="min-h-[440px] flex-1 space-y-5 overflow-y-auto px-5 py-7 sm:px-8"
+            style={{
+              backgroundImage: "repeating-linear-gradient(to bottom, transparent 0 31px, rgba(61,107,110,0.12) 31px 32px)",
+            }}
           >
+            <Bubble role="assistant" content={t.greeting} name={t.agronomist} />
             {messages.map((m) => (
-              <Bubble key={m.ts} role={m.role} content={m.content} />
+              <Bubble key={m.ts} role={m.role} content={m.content} name={m.role === "user" ? t.you : t.agronomist} />
             ))}
             {busy && (
-              <div className="flex items-center gap-2 text-sm text-ink-400">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                thinking…
+              <div className="flex items-center gap-2 pl-12 font-hand text-xl text-ink-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t.thinking}
               </div>
             )}
           </div>
 
           {/* Suggestions */}
-          {messages.length <= 1 && (
-            <div className="border-t border-ink-100 bg-paper-alt px-5 py-3">
-              <p className="mb-2 text-[10px] uppercase tracking-widex text-ink-400">
-                Try
-              </p>
+          {messages.length === 0 && (
+            <div className="border-t-2 border-dashed border-ink-900/15 bg-paper px-6 py-4">
+              <p className="mb-3 font-display text-xs uppercase tracking-[0.16em] text-ink-500">{t.try}</p>
               <div className="flex flex-wrap gap-2">
-                {SUGGESTIONS.map((s) => (
+                {t.suggestions.map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
-                    className="chip chip-ghost hover:bg-leaf-50 hover:text-leaf-700"
+                    className="rounded-md border-2 border-ink-900/20 bg-white px-3 py-1.5 text-left text-sm text-ink-700 transition-all hover:-translate-y-0.5 hover:border-leaf-600 hover:text-leaf-700"
                   >
                     {s}
                   </button>
@@ -232,136 +203,100 @@ export default function ChatPage() {
           )}
 
           {/* Composer */}
-          <form
-            onSubmit={onSubmit}
-            className="flex items-end gap-3 border-t border-ink-100 bg-white px-5 py-4"
-          >
+          <form onSubmit={onSubmit} className="flex items-end gap-3 border-t-2 border-ink-900/80 bg-paper px-5 py-4">
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDown}
               rows={2}
-              placeholder="Ask about risks, irrigation, salinity… (Enter to send)"
-              className="input flex-1 resize-none leading-snug"
+              placeholder={t.placeholder}
+              className="input flex-1 resize-none border-2 leading-snug"
             />
             <button
               type="submit"
               disabled={busy || draft.trim().length === 0}
-              className="btn btn-primary h-11 w-11 justify-center p-0 disabled:opacity-40"
-              aria-label="Send"
+              className="btn btn-stamp h-12 w-12 p-0 disabled:opacity-40"
+              aria-label={t.send}
             >
-              {busy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowUp className="h-4 w-4" strokeWidth={2.2} />
-              )}
+              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowUp className="h-5 w-5" strokeWidth={2.5} />}
             </button>
           </form>
-        </div>
+        </Reveal>
 
         {/* Side context panel */}
-        <aside className="flex flex-col gap-5">
-          <div className="card p-5">
-            <p className="label-eyebrow">Live reading</p>
+        <aside className="flex flex-col gap-6">
+          <Reveal delay={0.08} className="rounded-md bg-ink-900 p-5 text-paper shadow-soft">
+            <p className="font-display text-sm uppercase tracking-[0.18em] text-amber-100/80">{t.liveReading}</p>
             {latest ? (
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <Metric
-                  label="Temp"
-                  value={`${latest.temp.toFixed(1)}°C`}
-                  icon={Thermometer}
-                />
-                <Metric
-                  label="pH"
-                  value={latest.ph.toFixed(2)}
-                  icon={Leaf}
-                />
-                <Metric
-                  label="TDS"
-                  value={`${latest.tds} ppm`}
-                  icon={Droplets}
-                />
-                <Metric
-                  label="Moist"
-                  value={`${latest.moist}%`}
-                  icon={Leaf}
-                />
-              </div>
+              <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-md bg-paper/10">
+                {[
+                  { label: t.readings.temp,  v: `${latest.temp.toFixed(1)}°C` },
+                  { label: t.readings.ph,    v: latest.ph.toFixed(2) },
+                  { label: t.readings.tds,   v: `${latest.tds} ppm` },
+                  { label: t.readings.moist, v: `${latest.moist}%` },
+                ].map((m) => (
+                  <div key={m.label} className="bg-ink-900 p-3">
+                    <dt className="font-display text-[11px] uppercase tracking-[0.12em] text-paper/60">{m.label}</dt>
+                    <dd className="mt-0.5 font-mono text-xl text-amber-100">{m.v}</dd>
+                  </div>
+                ))}
+              </dl>
             ) : (
-              <div className="mt-3 rounded-xl border border-dashed border-ink-200 p-4 text-center">
-                <p className="text-sm text-ink-500">
-                  Connect the probe to ground my answers in real numbers.
-                </p>
-                <Link href="/connect" className="btn btn-primary mt-3 w-full justify-center">
+              <div className="mt-4 rounded-md border-2 border-dashed border-paper/25 p-4 text-center">
+                <p className="text-sm text-paper/70">{t.connectHint}</p>
+                <Link href="/connect" className="btn btn-primary mt-4 w-full">
                   <Radio className="h-4 w-4" />
-                  Connect device
+                  {t.connect}
                 </Link>
               </div>
             )}
-          </div>
+          </Reveal>
 
-          <div className="card p-5">
-            <p className="label-eyebrow">Crop context</p>
-            <p className="mt-2 text-xs text-ink-500">
-              Selecting a crop sharpens the agronomist&apos;s diagnosis and lets
-              it cite exact optimum bands.
-            </p>
+          <Reveal delay={0.14} className="card p-5">
+            <label htmlFor="crop" className="label-eyebrow">{t.cropContext}</label>
+            <p className="mt-3 text-[13px] leading-snug text-ink-500">{t.cropHint}</p>
             <select
+              id="crop"
               value={cropId}
               onChange={(e) => setCropId(e.target.value)}
-              className="input mt-3 text-sm"
+              className="input mt-3 border-2 text-sm"
             >
-              <option value="">— No crop selected —</option>
+              <option value="">{t.noCrop}</option>
               {CROPS.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.emoji} {c.name} · {c.nameRu}
+                  {lang === "ru" ? `${c.nameRu} · ${c.name}` : `${c.name} · ${c.nameRu}`}
                 </option>
               ))}
             </select>
             {crop && (
-              <div className="mt-3 space-y-1 rounded-lg bg-paper-alt p-3 text-[11px] text-ink-500">
-                <p>
-                  <span className="text-ink-400">pH</span>{" "}
-                  <span className="font-mono text-ink-700">
-                    {crop.phMin}–{crop.phMax}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-ink-400">Moisture</span>{" "}
-                  <span className="font-mono text-ink-700">
-                    {crop.wOptMin}–{crop.wOptMax}%
-                  </span>
-                </p>
-                <p>
-                  <span className="text-ink-400">EC max</span>{" "}
-                  <span className="font-mono text-ink-700">
-                    {crop.ecMax} ppm
-                  </span>
-                </p>
-                <p>
-                  <span className="text-ink-400">Root depth</span>{" "}
-                  <span className="font-mono text-ink-700">
-                    {crop.rootDepth} m
-                  </span>
-                </p>
-              </div>
+              <motion.dl
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-3 divide-y divide-dashed divide-ink-900/15 rounded-md bg-paper p-3 text-[13px]"
+              >
+                {[
+                  [t.crop.ph, `${crop.phMin}–${crop.phMax}`],
+                  [t.crop.moist, `${crop.wOptMin}–${crop.wOptMax}%`],
+                  [t.crop.ec, `${crop.ecMax} ppm`],
+                  [t.crop.root, `${crop.rootDepth} ${t.crop.m}`],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex justify-between py-1.5">
+                    <dt className="text-ink-500">{k}</dt>
+                    <dd className="font-mono text-ink-900">{v}</dd>
+                  </div>
+                ))}
+              </motion.dl>
             )}
-          </div>
+          </Reveal>
 
-          <div className="card bg-leaf-50/60 p-5">
-            <p className="font-display text-sm font-semibold text-leaf-900">
-              Need exact litres?
-            </p>
-            <p className="mt-1 text-xs text-leaf-800/80">
-              The Irrigation calculator applies the full V = ΔW × D × ρ × S × K_pH × K_EC
-              formula to your live reading.
-            </p>
-            <Link
-              href="/irrigation"
-              className="btn btn-ghost mt-3 w-full justify-center text-leaf-700"
-            >
-              Open calculator →
+          <Reveal delay={0.2} className="kraft stitch rounded-md p-5 shadow-card">
+            <p className="font-display text-xl uppercase text-ink-900">{t.calcTitle}</p>
+            <p className="mt-2 text-[13px] leading-snug text-ink-900">{t.calcBody}</p>
+            <Link href="/irrigation" className="btn btn-primary group mt-4 w-full">
+              {t.calcCta}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
             </Link>
-          </div>
+          </Reveal>
         </aside>
       </div>
     </main>
@@ -370,50 +305,35 @@ export default function ChatPage() {
 
 /* ================================================================ */
 
-function Bubble({ role, content }: { role: "user" | "assistant"; content: string }) {
+function Bubble({ role, content, name }: { role: "user" | "assistant"; content: string; name: string }) {
   const isUser = role === "user";
   return (
-    <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
+    <motion.div
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
+      className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}
+    >
       <div
-        className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${
-          isUser
-            ? "bg-ink-900 text-white"
-            : "bg-leaf-50 text-leaf-700 ring-1 ring-leaf-100"
+        aria-hidden
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md font-stamp text-[13px] ${
+          isUser ? "bg-ink-900 text-paper" : "bg-leaf-700 text-paper shadow-[0_2px_0_0_#1F2A12]"
         }`}
       >
-        {isUser ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
+        {isUser ? name.slice(0, 1) : <>S<span className="text-leaf-300">+</span></>}
       </div>
-      <div
-        className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-          isUser
-            ? "bg-ink-900 text-white"
-            : "bg-paper-alt text-ink-800 ring-1 ring-ink-100"
-        }`}
-      >
-        {content}
+      <div className={`max-w-[82%] ${isUser ? "text-right" : ""}`}>
+        <p className="mb-1 font-display text-[11px] uppercase tracking-[0.14em] text-ink-400">{name}</p>
+        <div
+          className={`whitespace-pre-wrap rounded-md px-4 py-3 text-left text-[15px] leading-relaxed ${
+            isUser
+              ? "bg-ink-900 text-paper"
+              : "border-2 border-ink-900/10 bg-[#F6E9C8] text-ink-900 shadow-[2px_3px_0_0_rgba(42,31,20,0.08)]"
+          }`}
+        >
+          {content}
+        </div>
       </div>
-    </div>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon: typeof Leaf;
-}) {
-  return (
-    <div className="rounded-xl border border-ink-100 bg-paper-alt p-3">
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widex text-ink-400">
-        <Icon className="h-3 w-3" />
-        {label}
-      </div>
-      <p className="mt-1 font-display text-lg font-semibold text-ink-900">
-        {value}
-      </p>
-    </div>
+    </motion.div>
   );
 }

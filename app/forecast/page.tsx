@@ -2,18 +2,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  AlertTriangle,
-  ArrowRight,
-  CheckCircle2,
-  Loader2,
-  Radio,
-  Sparkles,
-  TrendingUp,
-  Wheat,
-} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertTriangle, ArrowRight, Loader2, Radio, Sparkles, TrendingUp } from "lucide-react";
 import { useSensor } from "@/components/SensorProvider";
+import { useLang } from "@/components/LanguageProvider";
+import PageHeader from "@/components/PageHeader";
+import { CountUp, Reveal, StaggerItem, StaggerList } from "@/components/motion/Motion";
 import { CROPS } from "@/lib/crops";
+import { FORECAST } from "@/lib/i18n/pages/forecast";
 
 type Forecast = {
   cropId: string;
@@ -34,36 +30,17 @@ const UNIT_TO_M2: Record<AreaUnit, number> = {
   sot: 100,
   ha: 10_000,
 };
-const UNIT_LABEL: Record<AreaUnit, string> = {
-  m2: "m²",
-  sot: "сот.",
-  ha: "га",
-};
 
-const OUTLOOK: Record<
-  Forecast["outlook"],
-  { label: string; pill: string }
-> = {
-  ok: {
-    label: "Благоприятный прогноз",
-    pill: "bg-leaf-50 text-leaf-700 border-leaf-200",
-  },
-  marginal: {
-    label: "На грани — есть риски",
-    pill: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  risky: {
-    label: "Высокий риск потерь",
-    pill: "bg-rose-50 text-rose-700 border-rose-200",
-  },
-};
+type T = (typeof FORECAST)["ru"];
 
 export default function ForecastPage() {
-  const { latest, status } = useSensor();
+  const { latest } = useSensor();
+  const { lang, t: tc } = useLang();
+  const t = FORECAST[lang];
   const [cropId, setCropId] = useState("wheat");
   const [area, setArea] = useState(100);
   const [unit, setUnit] = useState<AreaUnit>("sot");
-  const [region, setRegion] = useState("Западно-Казахстанская обл., Уральск");
+  const [region, setRegion] = useState(t.regionDefault);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +50,6 @@ export default function ForecastPage() {
 
   const crop = useMemo(() => CROPS.find((c) => c.id === cropId), [cropId]);
   const areaM2 = area * UNIT_TO_M2[unit];
-  const hasReading = Boolean(latest);
 
   async function submit() {
     if (busy || !crop || areaM2 <= 0) return;
@@ -90,232 +66,164 @@ export default function ForecastPage() {
           areaM2,
           region: region.trim() || undefined,
           note: note.trim() || undefined,
+          lang,
           reading: latest
-            ? {
-                temp: latest.temp,
-                ph: latest.ph,
-                tds: latest.tds,
-                moist: latest.moist,
-              }
+            ? { temp: latest.temp, ph: latest.ph, tds: latest.tds, moist: latest.moist }
             : undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error ?? "Не удалось рассчитать прогноз.");
+        setError(data?.error ?? t.failed);
         return;
       }
       setResult(data.forecast as Forecast);
       setModel(data.model ?? null);
       if (data.warning) setWarning(data.warning);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Сетевая ошибка");
+      setError(e instanceof Error ? e.message : t.network);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <main className="mx-auto max-w-[1180px] px-5 py-10 sm:px-8 sm:py-14">
-      <section className="mb-8">
-        <div className="inline-flex items-center gap-2 rounded-full border border-leaf-200 bg-leaf-50 px-3 py-1 text-xs font-medium text-leaf-700">
-          <TrendingUp className="h-3.5 w-3.5" />
-          AI Yield Forecast
-        </div>
-        <h1 className="mt-4 font-display text-3xl font-semibold text-ink-900 sm:text-4xl">
-          Прогноз урожая
-        </h1>
-        <p className="mt-3 max-w-2xl text-ink-600">
-          Выберите культуру, площадь и регион — SoilPlus рассчитает ожидаемый
-          урожай, покажет риски и конкретные действия, которые поднимут выход.
-        </p>
-      </section>
+    <main className="mx-auto max-w-[1180px] px-5 pb-24 pt-10 sm:px-8">
+      <PageHeader home={tc.common.home} crumb={t.crumb} eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* INPUT */}
-        <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-ink-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold text-ink-900">
-              <Wheat className="h-5 w-5 text-leaf-600" />
-              Параметры поля
-            </h2>
+      <div className="mt-10 grid gap-6 lg:grid-cols-5">
+        {/* INPUT — field passport */}
+        <Reveal className="lg:col-span-2">
+          <div className="kraft stitch rounded-md p-6 shadow-soft">
+            <h2 className="mb-5 text-2xl uppercase text-ink-900">{t.fieldTitle}</h2>
 
-            <label className="mb-4 block">
-              <span className="mb-1.5 block text-sm font-medium text-ink-700">
-                Культура
-              </span>
-              <select
-                value={cropId}
-                onChange={(e) => setCropId(e.target.value)}
-                className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 focus:border-leaf-500 focus:outline-none focus:ring-2 focus:ring-leaf-200"
-              >
+            <Field label={t.crop}>
+              <select value={cropId} onChange={(e) => setCropId(e.target.value)} className="input border-2">
                 {CROPS.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.emoji} {c.nameRu} — {c.name}
+                    {lang === "ru" ? `${c.nameRu} — ${c.name}` : `${c.name} — ${c.nameRu}`}
                   </option>
                 ))}
               </select>
-              {crop && (
-                <p className="mt-2 text-xs text-ink-500">{crop.note}</p>
-              )}
-            </label>
+              {crop && <p className="mt-2 text-xs leading-snug text-ink-900">{lang === "ru" ? crop.noteRu : crop.note}</p>}
+            </Field>
 
-            <div className="mb-4 grid grid-cols-3 gap-2">
-              <label className="col-span-2 block">
-                <span className="mb-1.5 block text-sm font-medium text-ink-700">
-                  Площадь
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  value={area}
-                  onChange={(e) => setArea(Number(e.target.value))}
-                  className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 focus:border-leaf-500 focus:outline-none focus:ring-2 focus:ring-leaf-200"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-ink-700">
-                  Ед.
-                </span>
-                <select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value as AreaUnit)}
-                  className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 focus:border-leaf-500 focus:outline-none focus:ring-2 focus:ring-leaf-200"
-                >
-                  {(Object.keys(UNIT_LABEL) as AreaUnit[]).map((u) => (
-                    <option key={u} value={u}>
-                      {UNIT_LABEL[u]}
-                    </option>
+            <div className="grid grid-cols-3 gap-2">
+              <Field label={t.area} className="col-span-2">
+                <input type="number" min={0} value={area} onChange={(e) => setArea(Number(e.target.value))} className="input border-2 font-mono" />
+              </Field>
+              <Field label={t.unit}>
+                <select value={unit} onChange={(e) => setUnit(e.target.value as AreaUnit)} className="input border-2">
+                  {(["m2", "sot", "ha"] as AreaUnit[]).map((u) => (
+                    <option key={u} value={u}>{t.units[u]}</option>
                   ))}
                 </select>
-              </label>
+              </Field>
             </div>
 
-            <label className="mb-4 block">
-              <span className="mb-1.5 block text-sm font-medium text-ink-700">
-                Регион
-              </span>
-              <input
-                type="text"
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                maxLength={80}
-                className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 focus:border-leaf-500 focus:outline-none focus:ring-2 focus:ring-leaf-200"
-              />
-            </label>
+            <Field label={t.region}>
+              <input type="text" value={region} onChange={(e) => setRegion(e.target.value)} maxLength={80} className="input border-2" />
+            </Field>
 
-            <label className="mb-4 block">
-              <span className="mb-1.5 block text-sm font-medium text-ink-700">
-                Заметка (необязательно)
-              </span>
+            <Field label={t.note}>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
                 maxLength={500}
-                placeholder="Сорт, предшественник, болезни в прошлом сезоне…"
-                className="w-full resize-none rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-leaf-500 focus:outline-none focus:ring-2 focus:ring-leaf-200"
+                placeholder={t.notePh}
+                className="input resize-none border-2"
               />
-            </label>
+            </Field>
 
             {/* Sensor status */}
             <div
-              className={`mb-4 flex items-start gap-2 rounded-lg border p-3 text-xs ${
-                hasReading
-                  ? "border-leaf-200 bg-leaf-50 text-leaf-800"
-                  : "border-ink-100 bg-ink-50 text-ink-600"
+              className={`mb-4 flex items-start gap-2 rounded-md p-3 text-xs leading-snug ${
+                latest ? "bg-leaf-50 text-leaf-800" : "bg-white/70 text-ink-700"
               }`}
             >
               <Radio className="mt-0.5 h-4 w-4 shrink-0" />
-              {hasReading ? (
-                <span>
-                  Используем живое показание ESP32: влажность {latest!.moist}%,
-                  pH {latest!.ph.toFixed(2)}, EC {latest!.tds}, T{" "}
-                  {latest!.temp.toFixed(1)}°C
-                </span>
+              {latest ? (
+                <span>{t.liveReading(latest.moist, latest.ph.toFixed(2), latest.tds, latest.temp.toFixed(1))}</span>
               ) : (
                 <span>
-                  Датчик не подключён — прогноз будет по нормативам культуры.
-                  Подключите{" "}
-                  <Link href="/connect" className="underline">
-                    ESP32
-                  </Link>{" "}
-                  для точности.
+                  {t.noDevice[0]}
+                  <Link href="/connect" className="font-medium underline underline-offset-2">{t.noDevice[1]}</Link>
+                  {t.noDevice[2]}
                 </span>
               )}
             </div>
 
             {error && (
-              <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              <div role="alert" className="mb-3 flex items-start gap-2 rounded-md border-2 border-stamp-500/40 bg-rose-50 p-3 text-sm text-stamp-600">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <button
-              onClick={submit}
-              disabled={busy || !crop || areaM2 <= 0}
-              className="btn btn-primary w-full"
-            >
+            <button onClick={submit} disabled={busy || !crop || areaM2 <= 0} className="btn btn-stamp w-full py-3.5 text-base disabled:opacity-50">
               {busy ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Считаем…
+                  {t.counting}
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4" />
-                  Рассчитать прогноз
+                  <Sparkles className="h-4 w-4" strokeWidth={2.5} />
+                  {t.run}
                 </>
               )}
             </button>
           </div>
-        </div>
+        </Reveal>
 
         {/* OUTPUT */}
         <div className="lg:col-span-3">
-          {!result && !busy && (
-            <EmptyState />
-          )}
-          {busy && <Loading />}
-          {result && (
-            <ResultView
-              forecast={result}
-              model={model}
-              warning={warning}
-              areaM2={areaM2}
-            />
-          )}
+          <AnimatePresence mode="wait">
+            {result ? (
+              <motion.div key="result" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
+                <ResultView forecast={result} model={model} warning={warning} areaM2={areaM2} t={t} locale={lang === "ru" ? "ru-RU" : "en-US"} />
+              </motion.div>
+            ) : busy ? (
+              <motion.div
+                key="busy"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-md border-2 border-ink-900/10 bg-white p-8 text-center"
+              >
+                <Loader2 className="h-8 w-8 animate-spin text-leaf-600" />
+                <p className="mt-4 font-display text-xl uppercase text-ink-900">{t.loading}</p>
+                <p className="mt-1 text-sm text-ink-500">{t.loadingSub}</p>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-md border-2 border-dashed border-ink-900/20 p-8 text-center"
+              >
+                <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-dashed border-ink-900/30 text-leaf-700">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <p className="mt-4 font-display text-2xl uppercase text-ink-900">{t.emptyTitle}</p>
+                <p className="mt-2 max-w-sm text-sm text-ink-500">{t.emptyBody}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </main>
   );
 }
 
-function EmptyState() {
+function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white/50 p-8 text-center">
-      <div className="grid h-14 w-14 place-items-center rounded-full bg-leaf-50 text-leaf-600">
-        <TrendingUp className="h-6 w-6" />
-      </div>
-      <h3 className="mt-4 font-display text-lg font-semibold text-ink-900">
-        Готов к расчёту
-      </h3>
-      <p className="mt-2 max-w-sm text-sm text-ink-500">
-        Заполните форму слева. Если есть подключённый ESP32, текущие показатели
-        почвы учтутся автоматически.
-      </p>
-    </div>
-  );
-}
-
-function Loading() {
-  return (
-    <div className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white p-8 text-center">
-      <Loader2 className="h-8 w-8 animate-spin text-leaf-600" />
-      <p className="mt-4 font-medium text-ink-900">Модель считает урожай…</p>
-      <p className="mt-1 text-sm text-ink-500">3–6 секунд.</p>
-    </div>
+    <label className={`mb-4 block ${className}`}>
+      <span className="mb-1.5 block font-display text-sm uppercase tracking-wide text-ink-900">{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -324,162 +232,117 @@ function ResultView({
   model,
   warning,
   areaM2,
+  t,
+  locale,
 }: {
   forecast: Forecast;
   model: string | null;
   warning: string | null;
   areaM2: number;
+  t: T;
+  locale: string;
 }) {
-  const o = OUTLOOK[forecast.outlook];
   const tonnes = forecast.yieldTotalKg / 1000;
+  const tone =
+    forecast.outlook === "ok" ? "border-leaf-600 text-leaf-700"
+    : forecast.outlook === "marginal" ? "border-amber-500 text-amber-600"
+    : "border-stamp-500 text-stamp-500";
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${o.pill}`}
+    <div className="space-y-5">
+      <div className="stitch rounded-md bg-white p-7 shadow-soft">
+        <div className="flex flex-wrap items-center gap-3">
+          <motion.span
+            initial={{ opacity: 0, scale: 1.8, rotate: -14 }}
+            animate={{ opacity: 1, scale: 1, rotate: -3 }}
+            transition={{ type: "spring", stiffness: 480, damping: 22, delay: 0.15 }}
+            className={`inline-block rounded-sm border-[3px] border-double px-2.5 py-1 font-stamp text-sm uppercase ${tone}`}
           >
-            {forecast.outlook === "ok" ? (
-              <CheckCircle2 className="h-3 w-3" />
-            ) : (
-              <AlertTriangle className="h-3 w-3" />
-            )}
-            {o.label}
-          </span>
-          {model && (
-            <span className="rounded-full border border-ink-100 bg-white px-2 py-0.5 font-mono text-[10px] text-ink-500">
-              {model}
-            </span>
-          )}
+            {t.outlook[forecast.outlook]}
+          </motion.span>
+          {model && <span className="chip chip-ghost">{model}</span>}
         </div>
 
-        <h2 className="mt-3 font-display text-2xl font-semibold text-ink-900">
-          {forecast.cropName}
-        </h2>
+        <h2 className="mt-4 text-4xl uppercase text-ink-900">{forecast.cropName}</h2>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        <dl className="mt-6 grid gap-px overflow-hidden rounded-md border-2 border-ink-900/10 bg-ink-900/10 sm:grid-cols-3">
+          <Metric label={t.yield} value={forecast.yieldPerHa.toLocaleString(locale)} unit={t.kgHa} />
           <Metric
-            label="Урожайность"
-            value={forecast.yieldPerHa.toLocaleString("ru-RU")}
-            unit="кг/га"
+            label={t.onArea(areaM2.toLocaleString(locale))}
+            value={tonnes >= 1 ? tonnes.toFixed(2) : forecast.yieldTotalKg.toLocaleString(locale)}
+            unit={tonnes >= 1 ? t.tonnes : t.kg}
           />
-          <Metric
-            label={`На ${areaM2.toLocaleString("ru-RU")} м²`}
-            value={
-              tonnes >= 1
-                ? tonnes.toFixed(2)
-                : forecast.yieldTotalKg.toLocaleString("ru-RU")
-            }
-            unit={tonnes >= 1 ? "тонн" : "кг"}
-          />
-          <Metric
-            label="Соответствие"
-            value={String(forecast.fitness)}
-            unit="%"
-          />
-        </div>
+          <Metric label={t.fitness} value={String(forecast.fitness)} unit="%" count />
+        </dl>
 
-        <div className="mt-4 flex items-center gap-2 text-xs text-ink-500">
-          <span>Уверенность модели:</span>
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-100">
-            <div
-              className="h-full rounded-full bg-leaf-500"
-              style={{ width: `${forecast.confidence}%` }}
+        <div className="mt-5 flex items-center gap-3 text-xs text-ink-500">
+          <span className="font-display uppercase tracking-wide">{t.confidence}</span>
+          <div className="h-2.5 flex-1 border border-ink-900/30 bg-paper">
+            <motion.div
+              className="h-full bg-leaf-600"
+              initial={{ width: 0 }}
+              animate={{ width: `${forecast.confidence}%` }}
+              transition={{ duration: 1, ease: [0.2, 0.8, 0.2, 1], delay: 0.2 }}
             />
           </div>
-          <span className="font-mono text-ink-700">{forecast.confidence}%</span>
+          <span className="font-mono text-ink-900">{forecast.confidence}%</span>
         </div>
 
-        {forecast.notes && (
-          <p className="mt-4 rounded-lg bg-ink-50 p-3 text-sm text-ink-700">
-            {forecast.notes}
-          </p>
-        )}
+        {forecast.notes && <p className="mt-5 rounded-md bg-paper p-3 text-sm text-ink-700">{forecast.notes}</p>}
         {warning && (
-          <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          <p className="mt-3 flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs text-amber-600">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{warning}</span>
-          </div>
+          </p>
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <ListCard
-          title="Риски"
-          items={forecast.risks}
-          emptyHint="Критичных рисков не обнаружено"
-          tone="warn"
-        />
-        <ListCard
-          title="Как поднять урожай"
-          items={forecast.boosters}
-          emptyHint="Поддерживайте текущий режим"
-          tone="leaf"
-        />
+      <div className="grid gap-5 md:grid-cols-2">
+        <ListCard title={t.risks} items={forecast.risks} emptyHint={t.noRisks} tone="warn" />
+        <ListCard title={t.boosters} items={forecast.boosters} emptyHint={t.noBoosters} tone="leaf" />
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Link href="/irrigation" className="btn btn-primary">
-          <ArrowRight className="h-4 w-4" />
-          Рассчитать полив
+      <div className="flex flex-wrap gap-3">
+        <Link href="/irrigation" className="btn btn-primary group">
+          {t.toIrrigation}
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
         </Link>
         <Link href="/chat" className="btn btn-ghost">
-          <Sparkles className="h-4 w-4" />
-          Спросить AI-агронома
+          {t.toChat}
         </Link>
       </div>
     </div>
   );
 }
 
-function Metric({
-  label,
-  value,
-  unit,
-}: {
-  label: string;
-  value: string;
-  unit: string;
-}) {
+function Metric({ label, value, unit, count = false }: { label: string; value: string; unit: string; count?: boolean }) {
   return (
-    <div className="rounded-xl border border-ink-100 bg-white p-4">
-      <div className="text-xs uppercase tracking-wide text-ink-500">{label}</div>
-      <div className="mt-1 flex items-baseline gap-1">
-        <span className="font-display text-2xl font-semibold text-ink-900">
-          {value}
+    <div className="bg-white p-4">
+      <dt className="font-display text-xs uppercase tracking-[0.12em] text-ink-500">{label}</dt>
+      <dd className="mt-1 flex items-baseline gap-1">
+        <span className="font-display text-3xl font-semibold text-ink-900">
+          {/* CountUp only for plain numbers — grouped ones like "4 200" would split */}
+          {count ? <CountUp value={value} /> : value}
         </span>
         <span className="text-xs text-ink-500">{unit}</span>
-      </div>
+      </dd>
     </div>
   );
 }
 
-function ListCard({
-  title,
-  items,
-  emptyHint,
-  tone,
-}: {
-  title: string;
-  items: string[];
-  emptyHint: string;
-  tone: "warn" | "leaf";
-}) {
-  const dot = tone === "warn" ? "bg-amber-500" : "bg-leaf-500";
+function ListCard({ title, items, emptyHint, tone }: { title: string; items: string[]; emptyHint: string; tone: "warn" | "leaf" }) {
   return (
-    <div className="rounded-2xl border border-ink-100 bg-white p-5 shadow-sm">
-      <h3 className="mb-3 font-display text-sm font-semibold uppercase tracking-wide text-ink-700">
-        {title}
-      </h3>
+    <div className={`card border-t-4 p-5 ${tone === "warn" ? "border-t-amber-500" : "border-t-leaf-600"}`}>
+      <h3 className="mb-3 font-display text-lg uppercase tracking-wide text-ink-900">{title}</h3>
       {items.length > 0 ? (
-        <ul className="space-y-2">
+        <StaggerList className="space-y-2.5">
           {items.map((it, i) => (
-            <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-ink-800">
-              <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+            <StaggerItem key={i} className="flex gap-2.5 text-sm leading-relaxed text-ink-700">
+              <span className={tone === "warn" ? "text-amber-500" : "text-leaf-600"}>✦</span>
               <span>{it}</span>
-            </li>
+            </StaggerItem>
           ))}
-        </ul>
+        </StaggerList>
       ) : (
         <p className="text-sm text-ink-500">{emptyHint}</p>
       )}

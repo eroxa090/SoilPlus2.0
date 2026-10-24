@@ -9,71 +9,86 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // "Seed sack" palette — kraft paper, sack-print brown ink, field green,
+      // wheat ochre and a red inspection stamp. Scale names are kept from
+      // v2.0 so every page picks the palette up.
       colors: {
-        // Soft paper backgrounds
+        // Unbleached label paper; pure #fff reads as a hole in the kraft.
+        white: "#FAF4E6",
         paper: {
-          DEFAULT: "#FAFBF7",
-          alt:     "#F2F4EC",
-          white:   "#FFFFFF",
+          DEFAULT: "#EFE4CC",
+          alt:     "#E2D2B0",
+          white:   "#FAF4E6",
         },
-        // Ink — text palette
+        kraft: {
+          DEFAULT: "#C9A877",
+          dark:    "#A8865A",
+        },
+        // Ink — sack-print browns
         ink: {
-          900: "#0B1410",
-          700: "#22302A",
-          500: "#495A52",
-          400: "#6C7A72",
-          300: "#95A199",
-          200: "#C9D0CA",
-          100: "#E5E9E3",
+          900: "#2A1F14",
+          700: "#46382A",
+          500: "#6B5A45",
+          400: "#86745C",
+          300: "#A8967B",
+          200: "#CDBB9C",
+          100: "#DFD0B2",
         },
-        // Primary — cultivated green (agri)
+        // Primary — field green print
         leaf: {
-          50:  "#F2F8F3",
-          100: "#E1F0E4",
-          200: "#C4E1CA",
-          300: "#9BCBA4",
-          400: "#6AAF78",
-          500: "#3F9154",
-          600: "#2B7440",
-          700: "#225B33",
-          800: "#1B4729",
-          900: "#0F2E1A",
+          50:  "#EEF0E0",
+          100: "#DDE3C4",
+          200: "#BFCB96",
+          300: "#9AAD67",
+          400: "#789045",
+          500: "#5C7633",
+          600: "#4A6128",
+          700: "#3B4E21",
+          800: "#2E3D1A",
+          900: "#1F2A12",
         },
-        // Water / info accent
+        // Water / info
         aqua: {
-          50:  "#EEF7FA",
-          100: "#D8EDF2",
-          400: "#3F9FB8",
-          500: "#1E7F99",
-          600: "#155E74",
+          50:  "#EAF0EE",
+          100: "#D2E0DC",
+          400: "#5B8A8C",
+          500: "#3D6B6E",
+          600: "#2D5154",
         },
-        // Earth — warning / seed
+        // Wheat ochre — warning / seed
         amber: {
-          50:  "#FDF6E4",
-          100: "#FAE8B3",
-          500: "#C88A1B",
-          600: "#9F6B0F",
+          50:  "#FAF0D9",
+          100: "#F2DCA6",
+          500: "#C38A1E",
+          600: "#9A6B12",
+        },
+        // Inspection stamp
+        stamp: {
+          500: "#B23A2A",
+          600: "#932E21",
         },
       },
       fontFamily: {
-        sans:    ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
-        display: ["var(--font-jakarta)", "ui-sans-serif", "system-ui", "sans-serif"],
-        mono:    ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        sans:    ["var(--font-onest)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-oswald)", "Impact", "sans-serif"],
+        mono:    ["var(--font-ptmono)", "ui-monospace", "Menlo", "monospace"],
+        stamp:   ["var(--font-dirt)", "var(--font-oswald)", "Impact", "sans-serif"],
+        hand:    ["var(--font-caveat)", "cursive"],
       },
       letterSpacing: {
         tightx: "-0.02em",
         widex:  "0.14em",
       },
+      // Hard, offset shadows — labels glued onto a sack, not floating glass
       boxShadow: {
-        card:   "0 1px 0 0 rgba(34,48,42,0.04), 0 0 0 1px rgba(34,48,42,0.05)",
-        "card-hover":
-                "0 4px 20px -6px rgba(34,48,42,0.08), 0 0 0 1px rgba(43,116,64,0.15)",
-        soft:   "0 20px 60px -30px rgba(15,46,26,0.15)",
-        ring:   "0 0 0 3px rgba(63,145,84,0.18)",
+        card:   "2px 3px 0 0 rgba(42,31,20,0.10)",
+        "card-hover": "4px 6px 0 0 rgba(42,31,20,0.14)",
+        soft:   "6px 8px 0 0 rgba(42,31,20,0.16)",
+        ring:   "0 0 0 3px rgba(92,118,51,0.25)",
       },
       borderRadius: {
-        "2xl":  "18px",
-        "3xl":  "24px",
+        "2xl":  "10px",
+        "3xl":  "14px",
       },
       animation: {
         "fade-up":  "fadeUp 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both",

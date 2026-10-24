@@ -3,37 +3,48 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  LogIn,
-  LogOut,
-  Lock,
-  Menu,
-  Sprout,
-  User as UserIcon,
-  X,
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { Lock, LogOut, Menu, User as UserIcon, X } from "lucide-react";
 import { useSensor } from "@/components/SensorProvider";
 import { useUser } from "@/components/UserProvider";
-import SensorPulse from "./SensorPulse";
+import { LangSwitch, useLang } from "@/components/LanguageProvider";
+import type { Dict } from "@/lib/i18n/dict";
+import type { SocketStatus } from "@/hooks/useSoilSocket";
 
-type LinkDef = { href: string; label: string; owner?: boolean };
+/**
+ * Two-tier header, like a farm-store sign: a thin dark strip for language
+ * and account (collapses on scroll), and the kraft main bar for navigation.
+ * Total height at the top of the page is 96px — see the padding in layout.
+ */
 
-const PUBLIC_LINKS: LinkDef[] = [
-  { href: "/chat",       label: "AI Agronomist" },
-  { href: "/irrigation", label: "Irrigation" },
-  { href: "/diagnose",   label: "Diagnose" },
-  { href: "/forecast",   label: "Forecast" },
-  { href: "/weather",    label: "Weather"  },
-  { href: "/connect",    label: "Connect"  },
-  { href: "/heritage",   label: "Heritage" },
-  { href: "/shop",       label: "Shop"     },
-];
+type NavKey = Exclude<keyof Dict["nav"], "connect" | "ownerOnly" | "strip">;
+type LinkDef = { href: string; key: NavKey; owner?: boolean };
 
 // Only the dashboard still needs a device owner — it renders that owner's
 // own plots. Everything else works for an anonymous visitor.
-const OWNER_LINKS: LinkDef[] = [
-  { href: "/dashboard",  label: "Dashboard",   owner: true },
+const LINKS: LinkDef[] = [
+  { href: "/chat",       key: "chat" },
+  { href: "/irrigation", key: "irrigation" },
+  { href: "/diagnose",   key: "diagnose" },
+  { href: "/forecast",   key: "forecast" },
+  { href: "/weather",    key: "weather" },
+  { href: "/heritage",   key: "heritage" },
+  { href: "/shop",       key: "shop" },
+  { href: "/dashboard",  key: "dashboard", owner: true },
 ];
+
+const DOT: Record<SocketStatus, string> = {
+  idle:         "bg-ink-300",
+  connecting:   "bg-aqua-400 animate-breath",
+  connected:    "bg-leaf-500",
+  reconnecting: "bg-amber-500 animate-breath",
+  error:        "bg-rose-500",
+  closed:       "bg-ink-300",
+};
+
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(href + "/");
+}
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -41,146 +52,161 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const { status } = useSensor();
   const { user, logout } = useUser();
+  const { t } = useLang();
 
   const isOwner = !!user?.deviceOwner;
-  const visibleLinks: LinkDef[] = [
-    ...PUBLIC_LINKS,
-    ...OWNER_LINKS, // always show; lock icon indicates gated
-  ];
+  const live = status === "connected";
+  const idle = status === "idle" || status === "closed";
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  return (
-    <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "border-b border-ink-100 bg-paper/85 backdrop-blur-xl"
-          : "border-b border-transparent bg-paper/70 backdrop-blur"
-      }`}
+  const connectButton = (
+    <Link
+      href="/connect"
+      className={`btn ${live ? "btn-ghost" : "btn-primary"} px-3.5 py-2 text-[14px]`}
+      aria-current={isActive(pathname, "/connect") ? "page" : undefined}
     >
-      <nav className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-5 sm:px-8">
-        <Link href="/" className="flex items-center gap-2.5 text-ink-900">
-          <div className="grid h-8 w-8 place-items-center rounded-xl bg-leaf-600 shadow-[0_4px_12px_-4px_rgba(43,116,64,0.55)]">
-            <Sprout className="h-4 w-4 text-white" strokeWidth={2} />
-          </div>
-          <span className="font-display text-[17px] font-semibold tracking-tightx">
-            SoilPlus
-          </span>
-          <span className="hidden rounded-full border border-ink-100 bg-white px-2 py-0.5 font-mono text-[10px] font-medium text-ink-500 sm:inline-block">
-            v2.0
-          </span>
-        </Link>
+      <span className="relative flex h-2 w-2">
+        {live && <span className="absolute inset-0 animate-ping rounded-full bg-leaf-400/60" />}
+        <span className={`relative h-2 w-2 rounded-full ${DOT[status]}`} />
+      </span>
+      {idle ? t.nav.connect : t.status[status]}
+    </Link>
+  );
 
-        <ul className="hidden items-center gap-1 lg:flex">
-          {visibleLinks.map((l) => {
-            const active =
-              pathname === l.href ||
-              (l.href !== "/" && pathname.startsWith(l.href));
-            const gated = l.owner && !isOwner;
-            return (
-              <li key={l.href}>
-                <Link
-                  href={l.href}
-                  className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm transition ${
-                    active
-                      ? "bg-leaf-50 text-leaf-700"
-                      : "text-ink-500 hover:text-ink-900"
-                  }`}
-                >
-                  {gated && <Lock className="h-3 w-3 text-ink-400" />}
-                  {l.label}
+  return (
+    <header className="fixed inset-x-0 top-0 z-50">
+      {/* ---------------------------------------------- strip ---- */}
+      <div
+        className={`overflow-hidden bg-ink-900 text-paper/80 transition-[height] duration-300 ${
+          scrolled && !open ? "h-0" : "h-8"
+        }`}
+      >
+        <div className="mx-auto flex h-8 max-w-[1280px] items-center justify-between gap-4 px-5 font-mono text-[11px] sm:px-8">
+          <p className="hidden truncate tracking-wide sm:block">{t.nav.strip}</p>
+          <div className="ml-auto flex items-center gap-4">
+            <LangSwitch tone="dark" />
+            {user ? (
+              <>
+                <Link href="/profile" className="flex items-center gap-1.5 hover:text-paper">
+                  <UserIcon className="h-3.5 w-3.5" />
+                  {user.name.split(" ")[0]}
                 </Link>
-              </li>
-            );
-          })}
-        </ul>
-
-        <div className="flex items-center gap-2">
-          {isOwner && <SensorPulse status={status} />}
-          {user ? (
-            <div className="hidden items-center gap-2 sm:flex">
-              <Link href="/profile" className="btn btn-ghost">
-                <UserIcon className="h-4 w-4" />
-                {user.name.split(" ")[0]}
-              </Link>
-              <button onClick={logout} className="btn btn-ghost" title="Выйти">
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="hidden items-center gap-2 sm:flex">
-              <Link href="/login" className="btn btn-ghost">
-                <LogIn className="h-4 w-4" />
-                Войти
-              </Link>
-              <Link href="/signup" className="btn btn-primary">
-                Регистрация
-              </Link>
-            </div>
-          )}
-          <button
-            className="rounded-lg p-2 text-ink-700 lg:hidden"
-            aria-label="Menu"
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+                <button onClick={logout} className="flex items-center gap-1.5 hover:text-paper" title={t.common.logout}>
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t.common.logout}</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="hover:text-paper">{t.common.login}</Link>
+                <Link href="/signup" className="hidden text-amber-100 hover:text-paper sm:inline">{t.common.signup}</Link>
+              </>
+            )}
+          </div>
         </div>
-      </nav>
+      </div>
 
-      {/* Mobile sheet */}
-      {open && (
-        <div className="border-t border-ink-100 bg-white lg:hidden">
-          <ul className="mx-auto max-w-[1280px] px-5 py-3 sm:px-8">
-            {visibleLinks.map((l) => {
-              const active = pathname === l.href;
+      {/* ------------------------------------------- main bar ---- */}
+      <div
+        className={`kraft relative border-b-2 border-ink-900/80 transition-shadow duration-300 ${
+          scrolled ? "shadow-[0_4px_0_0_rgba(42,31,20,0.12)]" : ""
+        }`}
+      >
+        {/* stitched seam along the bottom edge */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-1.5 border-t-2 border-dashed border-ink-900/25" />
+
+        <nav className="relative mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-6 px-5 sm:px-8">
+          <Link href="/" className="group flex shrink-0 items-center gap-2.5 text-ink-900">
+            <span className="flex h-9 w-9 items-center justify-center rounded-md bg-leaf-700 font-stamp text-[16px] text-paper shadow-[0_2px_0_0_#1F2A12] transition-transform duration-300 group-hover:-rotate-6">
+              S<span className="text-leaf-300">+</span>
+            </span>
+            <span className="font-display text-[21px] font-semibold uppercase leading-none tracking-wide">SoilPlus</span>
+          </Link>
+
+          <ul className="hidden items-center xl:flex">
+            {LINKS.map((l) => {
+              const active = isActive(pathname, l.href);
               const gated = l.owner && !isOwner;
               return (
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm ${
-                      active
-                        ? "bg-leaf-50 text-leaf-700"
-                        : "text-ink-700 hover:bg-ink-100/50"
+                    aria-current={active ? "page" : undefined}
+                    title={gated ? t.nav.ownerOnly : undefined}
+                    className={`group relative flex items-center gap-1 whitespace-nowrap px-3 py-2 font-display text-[15px] uppercase tracking-[0.05em] transition-colors ${
+                      active ? "text-ink-900" : "text-ink-700 hover:text-ink-900"
                     }`}
                   >
-                    {gated && <Lock className="h-3.5 w-3.5 text-ink-400" />}
-                    {l.label}
+                    {gated && <Lock className="h-3 w-3 text-ink-500" />}
+                    {t.nav[l.key]}
+                    {/* hover underline */}
+                    <span className="absolute inset-x-3 bottom-0.5 h-[2px] origin-left scale-x-0 bg-ink-900/40 transition-transform duration-300 group-hover:scale-x-100" />
+                    {active && (
+                      <motion.span
+                        layoutId="nav-active"
+                        className="absolute inset-x-3 bottom-0 h-[3px] rounded-full bg-stamp-500"
+                        transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                      />
+                    )}
                   </Link>
                 </li>
               );
             })}
-            <li className="mt-2 border-t border-ink-100 pt-2">
-              {user ? (
-                <div className="flex items-center justify-between px-3 py-2 text-sm">
-                  <Link href="/profile" className="flex items-center gap-2 text-ink-700">
-                    <UserIcon className="h-4 w-4" />
-                    {user.name}
-                  </Link>
-                  <button onClick={logout} className="text-ink-500">
-                    <LogOut className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2 px-3 py-2">
-                  <Link href="/login" className="btn btn-ghost flex-1">
-                    Войти
-                  </Link>
-                  <Link href="/signup" className="btn btn-primary flex-1">
-                    Регистрация
-                  </Link>
-                </div>
-              )}
-            </li>
           </ul>
-        </div>
+
+          <div className="flex items-center gap-2">
+            <span className="hidden md:inline-flex">{connectButton}</span>
+            <button
+              className="rounded-md border-2 border-ink-900/70 p-1.5 text-ink-900 transition-colors hover:bg-ink-900 hover:text-paper xl:hidden"
+              aria-label={t.common.menu}
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
+        </nav>
+      </div>
+
+      {/* --------------------------------- mobile / tablet sheet ---- */}
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="border-b-2 border-ink-900/80 bg-paper shadow-soft xl:hidden"
+        >
+          <ul className="mx-auto grid max-w-[1280px] gap-0.5 px-5 py-3 sm:grid-cols-2 sm:px-8">
+            {LINKS.map((l) => {
+              const active = isActive(pathname, l.href);
+              const gated = l.owner && !isOwner;
+              return (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex items-center gap-2 rounded-md px-3 py-2.5 font-display text-[17px] uppercase tracking-wide ${
+                      active ? "bg-ink-900 text-paper" : "text-ink-700 hover:bg-paper-alt"
+                    }`}
+                  >
+                    {gated && <Lock className="h-3.5 w-3.5 opacity-60" />}
+                    {t.nav[l.key]}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mx-auto max-w-[1280px] border-t border-dashed border-ink-900/25 px-5 py-3 sm:px-8 md:hidden">
+            {connectButton}
+          </div>
+        </motion.div>
       )}
     </header>
   );

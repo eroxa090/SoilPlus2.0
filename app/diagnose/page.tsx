@@ -1,19 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  AlertTriangle,
-  Camera,
-  CheckCircle2,
-  ImageIcon,
-  Leaf,
-  Loader2,
-  ShieldAlert,
-  Sparkles,
-  Upload,
-  X,
-} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertTriangle, Camera, Leaf, Loader2, Sparkles, Upload, X } from "lucide-react";
+import { useLang } from "@/components/LanguageProvider";
+import PageHeader from "@/components/PageHeader";
+import { Reveal, StaggerItem, StaggerList } from "@/components/motion/Motion";
+import { DIAGNOSE } from "@/lib/i18n/pages/diagnose";
 
 type Diagnosis = {
   isPlant: boolean;
@@ -35,56 +29,24 @@ type ApiResponse =
   | { diagnosis: Diagnosis; model: string; warning?: string }
   | { error: string };
 
-const SEVERITY_STYLE: Record<
-  Diagnosis["severity"],
-  { label: string; dot: string; pill: string }
-> = {
-  none: {
-    label: "Здорово",
-    dot: "bg-leaf-500",
-    pill: "bg-leaf-50 text-leaf-700 border-leaf-200",
-  },
-  mild: {
-    label: "Лёгкая",
-    dot: "bg-amber-400",
-    pill: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  moderate: {
-    label: "Средняя",
-    dot: "bg-orange-500",
-    pill: "bg-orange-50 text-orange-700 border-orange-200",
-  },
-  severe: {
-    label: "Тяжёлая",
-    dot: "bg-rose-500",
-    pill: "bg-rose-50 text-rose-700 border-rose-200",
-  },
+const SEVERITY_TONE: Record<Diagnosis["severity"], string> = {
+  none:     "border-leaf-600 text-leaf-700",
+  mild:     "border-amber-500 text-amber-600",
+  moderate: "border-amber-600 text-amber-600",
+  severe:   "border-stamp-500 text-stamp-500",
 };
 
-const URGENCY_STYLE: Record<
-  Diagnosis["urgency"],
-  { label: string; pill: string; icon: typeof Sparkles }
-> = {
-  watch: {
-    label: "Наблюдать",
-    pill: "bg-ink-100/60 text-ink-700 border-ink-200",
-    icon: CheckCircle2,
-  },
-  act_soon: {
-    label: "Действовать скоро",
-    pill: "bg-amber-50 text-amber-700 border-amber-200",
-    icon: AlertTriangle,
-  },
-  act_now: {
-    label: "Срочно!",
-    pill: "bg-rose-50 text-rose-700 border-rose-200",
-    icon: ShieldAlert,
-  },
+const URGENCY_TONE: Record<Diagnosis["urgency"], string> = {
+  watch:    "chip-ghost",
+  act_soon: "chip-amber",
+  act_now:  "text-stamp-500",
 };
 
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
 
 export default function DiagnosePage() {
+  const { lang, t: tc } = useLang();
+  const t = DIAGNOSE[lang];
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -96,28 +58,31 @@ export default function DiagnosePage() {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const onFile = useCallback((f: File | null) => {
-    setError(null);
-    setResult(null);
-    setWarning(null);
-    if (!f) {
-      setFile(null);
-      setPreview(null);
-      return;
-    }
-    if (!f.type.startsWith("image/")) {
-      setError("Нужен файл изображения (JPEG / PNG / WebP).");
-      return;
-    }
-    if (f.size > MAX_BYTES) {
-      setError("Файл больше 8 МБ. Пожалуйста, сожмите фото.");
-      return;
-    }
-    setFile(f);
-    const reader = new FileReader();
-    reader.onload = () => setPreview(reader.result as string);
-    reader.readAsDataURL(f);
-  }, []);
+  const onFile = useCallback(
+    (f: File | null) => {
+      setError(null);
+      setResult(null);
+      setWarning(null);
+      if (!f) {
+        setFile(null);
+        setPreview(null);
+        return;
+      }
+      if (!f.type.startsWith("image/")) {
+        setError(t.notImage);
+        return;
+      }
+      if (f.size > MAX_BYTES) {
+        setError(t.tooBig);
+        return;
+      }
+      setFile(f);
+      const reader = new FileReader();
+      reader.onload = () => setPreview(reader.result as string);
+      reader.readAsDataURL(f);
+    },
+    [t],
+  );
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -143,18 +108,19 @@ export default function DiagnosePage() {
           imageBase64: preview,
           mimeType: file.type,
           note: note.trim() || undefined,
+          lang,
         }),
       });
       const data = (await res.json()) as ApiResponse;
       if (!res.ok || "error" in data) {
-        setError(("error" in data && data.error) || "Не удалось получить диагноз.");
+        setError(("error" in data && data.error) || t.failed);
         return;
       }
       setResult(data.diagnosis);
       setModel(data.model);
       if (data.warning) setWarning(data.warning);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Сетевая ошибка.");
+      setError(e instanceof Error ? e.message : t.network);
     } finally {
       setBusy(false);
     }
@@ -170,40 +136,17 @@ export default function DiagnosePage() {
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  const severity = useMemo(
-    () => (result ? SEVERITY_STYLE[result.severity] : null),
-    [result],
-  );
-  const urgency = useMemo(
-    () => (result ? URGENCY_STYLE[result.urgency] : null),
-    [result],
-  );
-
   return (
-    <main className="mx-auto max-w-[1180px] px-5 py-10 sm:px-8 sm:py-14">
-      {/* Header */}
-      <section className="mb-8">
-        <div className="inline-flex items-center gap-2 rounded-full border border-leaf-200 bg-leaf-50 px-3 py-1 text-xs font-medium text-leaf-700">
-          <Sparkles className="h-3.5 w-3.5" />
-          AI Photo Diagnosis
-        </div>
-        <h1 className="mt-4 font-display text-3xl font-semibold text-ink-900 sm:text-4xl">
-          Фото-диагностика болезней растений
-        </h1>
-        <p className="mt-3 max-w-2xl text-ink-600">
-          Загрузите фото листа, плода или стебля — SoilPlus-агроном на базе
-          Gemini Vision определит болезнь, вредителя или дефицит питания и даст
-          конкретные шаги для защиты урожая.
-        </p>
-      </section>
+    <main className="mx-auto max-w-[1180px] px-5 pb-24 pt-10 sm:px-8">
+      <PageHeader home={tc.common.home} crumb={t.crumb} eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="mt-10 grid gap-6 lg:grid-cols-5">
         {/* Upload pane */}
-        <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-ink-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold text-ink-900">
-              <Camera className="h-5 w-5 text-leaf-600" />
-              1. Загрузите фото
+        <Reveal className="lg:col-span-2">
+          <div className="stitch rounded-md bg-white p-6 shadow-soft">
+            <h2 className="mb-5 flex items-center gap-2 text-2xl uppercase text-ink-900">
+              <Camera className="h-6 w-6 text-stamp-500" strokeWidth={2.25} />
+              {t.step1}
             </h2>
 
             {!preview ? (
@@ -214,10 +157,8 @@ export default function DiagnosePage() {
                 }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={onDrop}
-                className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition ${
-                  dragOver
-                    ? "border-leaf-500 bg-leaf-50/50"
-                    : "border-ink-200 hover:border-leaf-400 hover:bg-leaf-50/30"
+                className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-md border-[3px] border-dashed p-8 text-center transition-colors ${
+                  dragOver ? "border-leaf-600 bg-leaf-50" : "border-ink-900/25 hover:border-leaf-500 hover:bg-leaf-50/50"
                 }`}
               >
                 <input
@@ -228,265 +169,202 @@ export default function DiagnosePage() {
                   className="hidden"
                   onChange={(e) => onFile(e.target.files?.[0] ?? null)}
                 />
-                <div className="grid h-12 w-12 place-items-center rounded-full bg-leaf-50 text-leaf-600">
-                  <Upload className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="font-medium text-ink-900">
-                    Нажмите или перетащите фото
-                  </div>
-                  <div className="mt-1 text-xs text-ink-500">
-                    JPEG, PNG, WebP · до 8 МБ
-                  </div>
-                </div>
+                <motion.span
+                  animate={dragOver ? { y: -4, scale: 1.08 } : { y: 0, scale: 1 }}
+                  className="grid h-14 w-14 place-items-center rounded-full bg-leaf-700 text-paper shadow-[0_3px_0_0_#1F2A12]"
+                >
+                  <Upload className="h-6 w-6" strokeWidth={2.25} />
+                </motion.span>
+                <span className="font-display text-lg uppercase tracking-wide text-ink-900">{t.drop}</span>
+                <span className="font-mono text-xs text-ink-500">{t.formats}</span>
               </label>
             ) : (
-              <div className="relative overflow-hidden rounded-xl border border-ink-100 bg-ink-50">
+              <motion.figure
+                initial={{ opacity: 0, rotate: -4, scale: 0.95 }}
+                animate={{ opacity: 1, rotate: -1.5, scale: 1 }}
+                className="relative bg-white p-2.5 pb-8 shadow-soft"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={preview}
-                  alt="preview"
-                  className="max-h-72 w-full object-contain"
-                />
+                <img src={preview} alt={t.previewAlt} className="max-h-72 w-full bg-paper object-contain" />
                 <button
                   onClick={reset}
-                  className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-ink-700 shadow-sm backdrop-blur hover:bg-white"
-                  aria-label="Remove image"
+                  className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-ink-900 text-paper shadow-card transition-transform hover:scale-110"
+                  aria-label={t.remove}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4" strokeWidth={2.5} />
                 </button>
-              </div>
+              </motion.figure>
             )}
 
             <div className="mt-5">
-              <label
-                htmlFor="note"
-                className="mb-2 block text-sm font-medium text-ink-700"
-              >
-                Заметка (необязательно)
+              <label htmlFor="note" className="mb-2 block font-display text-sm uppercase tracking-wide text-ink-700">
+                {t.note}
               </label>
               <textarea
                 id="note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Например: томаты, сорт Бычье Сердце, листья желтеют снизу"
+                placeholder={t.notePh}
                 rows={3}
                 maxLength={500}
-                className="w-full resize-none rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-leaf-500 focus:outline-none focus:ring-2 focus:ring-leaf-200"
+                className="input resize-none border-2"
               />
             </div>
 
             {error && (
-              <div className="mt-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              <div role="alert" className="mt-4 flex items-start gap-2 rounded-md border-2 border-stamp-500/40 bg-rose-50 p-3 text-sm text-stamp-600">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <button
-              onClick={submit}
-              disabled={!file || busy}
-              className="btn btn-primary mt-5 w-full"
-            >
+            <button onClick={submit} disabled={!file || busy} className="btn btn-stamp mt-5 w-full py-3.5 text-base disabled:opacity-50">
               {busy ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Анализируем…
+                  {t.analysing}
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4" />
-                  Диагностировать
+                  <Sparkles className="h-4 w-4" strokeWidth={2.5} />
+                  {t.run}
                 </>
               )}
             </button>
 
-            <p className="mt-3 text-[11px] text-ink-500">
-              Диагноз AI — это подсказка, а не окончательный вердикт. При
-              серьёзных потерях урожая обратитесь к агроному / лаборатории.
-            </p>
+            <p className="mt-3 text-[11px] leading-snug text-ink-500">{t.disclaimer}</p>
           </div>
-        </div>
+        </Reveal>
 
         {/* Result pane */}
         <div className="lg:col-span-3">
-          {!result && !busy && (
-            <div className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white/50 p-8 text-center">
-              <div className="grid h-14 w-14 place-items-center rounded-full bg-leaf-50 text-leaf-600">
-                <Leaf className="h-6 w-6" />
-              </div>
-              <h3 className="mt-4 font-display text-lg font-semibold text-ink-900">
-                Готов к работе
-              </h3>
-              <p className="mt-2 max-w-sm text-sm text-ink-500">
-                Загрузите чёткое фото поражённой части растения — крупно, при
-                дневном свете. Результат появится здесь.
-              </p>
-              <ul className="mt-5 grid gap-2 text-left text-xs text-ink-600">
-                <li className="flex items-center gap-2">
-                  <ImageIcon className="h-3.5 w-3.5 text-leaf-600" />
-                  Снимайте близко к поражённому участку
-                </li>
-                <li className="flex items-center gap-2">
-                  <ImageIcon className="h-3.5 w-3.5 text-leaf-600" />
-                  Избегайте сильных теней и размытия
-                </li>
-                <li className="flex items-center gap-2">
-                  <ImageIcon className="h-3.5 w-3.5 text-leaf-600" />
-                  Лучше несколько фото: лист сверху + снизу
-                </li>
-              </ul>
-            </div>
-          )}
-
-          {busy && (
-            <div className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white p-8 text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-leaf-600" />
-              <p className="mt-4 font-medium text-ink-900">
-                Gemini Vision изучает фото…
-              </p>
-              <p className="mt-1 text-sm text-ink-500">Обычно 3–6 секунд.</p>
-            </div>
-          )}
-
-          {result && severity && urgency && (
-            <div className="space-y-4">
-              {/* Summary card */}
-              <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${severity.pill}`}
-                      >
-                        <span
-                          className={`inline-block h-1.5 w-1.5 rounded-full ${severity.dot}`}
-                        />
-                        {severity.label}
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${urgency.pill}`}
-                      >
-                        <urgency.icon className="h-3 w-3" />
-                        {urgency.label}
-                      </span>
-                      {model && (
-                        <span className="rounded-full border border-ink-100 bg-white px-2 py-0.5 font-mono text-[10px] text-ink-500">
-                          {model}
-                        </span>
-                      )}
-                    </div>
-                    {result.plantSpecies && (
-                      <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-leaf-200 bg-leaf-50 px-2.5 py-1 text-xs font-medium text-leaf-800">
-                        <Leaf className="h-3.5 w-3.5" />
-                        Растение:&nbsp;
-                        <span className="text-ink-900">
-                          {result.plantSpecies}
-                        </span>
-                        {result.plantLatin && (
-                          <span className="italic text-ink-500">
-                            · {result.plantLatin}
-                          </span>
-                        )}
+          <AnimatePresence mode="wait">
+            {result ? (
+              <motion.div
+                key="result"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4 }}
+                className="space-y-5"
+              >
+                {/* Summary — a lab report */}
+                <div className="stitch rounded-md bg-white p-7 shadow-soft">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <motion.span
+                          initial={{ opacity: 0, scale: 1.8, rotate: -14 }}
+                          animate={{ opacity: 1, scale: 1, rotate: -3 }}
+                          transition={{ type: "spring", stiffness: 480, damping: 22, delay: 0.15 }}
+                          className={`inline-block rounded-sm border-[3px] border-double px-2.5 py-1 font-stamp text-sm uppercase ${SEVERITY_TONE[result.severity]}`}
+                        >
+                          {t.severity[result.severity]}
+                        </motion.span>
+                        <span className={`chip ${URGENCY_TONE[result.urgency]}`}>{t.urgency[result.urgency]}</span>
+                        {model && <span className="chip chip-ghost">{model}</span>}
                       </div>
-                    )}
-                    <h2 className="mt-3 font-display text-2xl font-semibold text-ink-900">
-                      {result.disease || "—"}
-                    </h2>
-                    {result.latin && (
-                      <p className="mt-0.5 text-sm italic text-ink-500">
-                        {result.latin}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs uppercase tracking-wide text-ink-500">
-                      Уверенность
+                      {result.plantSpecies && (
+                        <p className="mt-4 flex flex-wrap items-center gap-1.5 text-sm text-ink-700">
+                          <Leaf className="h-4 w-4 text-leaf-600" strokeWidth={2.5} />
+                          {t.plant}: <span className="font-medium text-ink-900">{result.plantSpecies}</span>
+                          {result.plantLatin && <span className="italic text-ink-500">· {result.plantLatin}</span>}
+                        </p>
+                      )}
+                      <h2 className="mt-3 text-4xl uppercase leading-tight text-ink-900">{result.disease || "—"}</h2>
+                      {result.latin && <p className="mt-1 text-sm italic text-ink-500">{result.latin}</p>}
                     </div>
-                    <div className="font-mono text-3xl font-semibold text-leaf-700">
-                      {result.confidence}%
+                    <div className="text-right">
+                      <p className="font-display text-xs uppercase tracking-[0.14em] text-ink-500">{t.confidence}</p>
+                      <p className="font-mono text-4xl text-leaf-700">{result.confidence}%</p>
                     </div>
                   </div>
+
+                  {result.notes && <p className="mt-5 rounded-md bg-paper p-3 text-sm text-ink-700">{result.notes}</p>}
+
+                  {warning && (
+                    <p className="mt-4 flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs text-amber-600">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{warning}</span>
+                    </p>
+                  )}
                 </div>
 
-                {result.notes && (
-                  <p className="mt-4 rounded-lg bg-ink-50 p-3 text-sm text-ink-700">
-                    {result.notes}
-                  </p>
-                )}
+                {/* Details grid */}
+                <div className="grid gap-5 md:grid-cols-2">
+                  <DetailCard title={t.symptoms} items={result.symptoms} tone="ink" />
+                  <DetailCard title={t.causes} items={result.causes} tone="ink" />
+                  <DetailCard title={t.treatment} items={result.treatment} tone="leaf" />
+                  <DetailCard title={t.prevention} items={result.prevention} tone="leaf" />
+                </div>
 
-                {warning && (
-                  <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>{warning}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Details grid */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <DetailCard title="Симптомы" items={result.symptoms} tone="ink" />
-                <DetailCard title="Причины" items={result.causes} tone="ink" />
-                <DetailCard
-                  title="Лечение сейчас"
-                  items={result.treatment}
-                  tone="leaf"
-                />
-                <DetailCard
-                  title="Профилактика"
-                  items={result.prevention}
-                  tone="leaf"
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button onClick={reset} className="btn btn-ghost">
-                  <Upload className="h-4 w-4" />
-                  Проверить другое фото
-                </button>
-                <Link href="/chat" className="btn btn-primary">
-                  <Sparkles className="h-4 w-4" />
-                  Спросить AI-агронома
-                </Link>
-              </div>
-            </div>
-          )}
+                <div className="flex flex-wrap gap-3">
+                  <button onClick={reset} className="btn btn-ghost">
+                    <Upload className="h-4 w-4" strokeWidth={2.5} />
+                    {t.another}
+                  </button>
+                  <Link href="/chat" className="btn btn-primary">
+                    <Sparkles className="h-4 w-4" strokeWidth={2.5} />
+                    {t.ask}
+                  </Link>
+                </div>
+              </motion.div>
+            ) : busy ? (
+              <motion.div
+                key="busy"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-md border-2 border-ink-900/10 bg-white p-8 text-center"
+              >
+                <Loader2 className="h-8 w-8 animate-spin text-leaf-600" />
+                <p className="mt-4 font-display text-xl uppercase text-ink-900">{t.loading}</p>
+                <p className="mt-1 text-sm text-ink-500">{t.loadingSub}</p>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-md border-2 border-dashed border-ink-900/20 p-8 text-center"
+              >
+                <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-dashed border-ink-900/30 text-leaf-700">
+                  <Leaf className="h-6 w-6" />
+                </div>
+                <p className="mt-4 font-display text-2xl uppercase text-ink-900">{t.readyTitle}</p>
+                <p className="mt-2 max-w-sm text-sm text-ink-500">{t.readyBody}</p>
+                <ul className="mt-6 grid gap-2 text-left text-sm text-ink-700">
+                  {t.tips.map((tip, i) => (
+                    <li key={tip} className="flex items-center gap-3">
+                      <span className="grid h-6 w-6 place-items-center rounded-full border-2 border-ink-900/60 font-mono text-xs">{i + 1}</span>
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </main>
   );
 }
 
-function DetailCard({
-  title,
-  items,
-  tone,
-}: {
-  title: string;
-  items: string[];
-  tone: "leaf" | "ink";
-}) {
+function DetailCard({ title, items, tone }: { title: string; items: string[]; tone: "leaf" | "ink" }) {
   const hasItems = items && items.length > 0;
-  const dotColor = tone === "leaf" ? "bg-leaf-500" : "bg-ink-400";
   return (
-    <div className="rounded-2xl border border-ink-100 bg-white p-5 shadow-sm">
-      <h3 className="mb-3 font-display text-sm font-semibold uppercase tracking-wide text-ink-700">
-        {title}
-      </h3>
+    <div className={`card border-t-4 p-5 ${tone === "leaf" ? "border-t-leaf-600" : "border-t-ink-900"}`}>
+      <h3 className="mb-3 font-display text-lg uppercase tracking-wide text-ink-900">{title}</h3>
       {hasItems ? (
-        <ul className="space-y-2">
+        <StaggerList className="space-y-2.5">
           {items.map((it, i) => (
-            <li
-              key={i}
-              className="flex gap-2.5 text-sm leading-relaxed text-ink-800"
-            >
-              <span
-                className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${dotColor}`}
-              />
+            <StaggerItem key={i} className="flex gap-2.5 text-sm leading-relaxed text-ink-700">
+              <span className={tone === "leaf" ? "text-leaf-600" : "text-ink-400"}>✦</span>
               <span>{it}</span>
-            </li>
+            </StaggerItem>
           ))}
-        </ul>
+        </StaggerList>
       ) : (
         <p className="text-sm text-ink-400">—</p>
       )}

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
-import { Cpu, Lock, ShoppingBag } from "lucide-react";
+import { getLang } from "@/lib/i18n/server";
+import { DASHBOARD } from "@/lib/i18n/pages/dashboard";
+import { Lock, ShoppingBag } from "lucide-react";
 
 /**
  * Server component that only renders its children when the current session
@@ -22,73 +24,37 @@ export default async function DeviceGate({
   return <>{children}</>;
 }
 
-function UpsellLockout() {
+async function UpsellLockout() {
+  const t = DASHBOARD[await getLang()].gate;
   return (
-    <main className="mx-auto max-w-[720px] px-5 py-16 sm:px-8">
-      <div className="rounded-2xl border border-ink-100 bg-white p-8 text-center shadow-sm">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-leaf-50 text-leaf-600">
-          <Lock className="h-6 w-6" />
+    <main className="mx-auto max-w-[760px] px-5 py-16 sm:px-8">
+      <div className="stitch relative rounded-md bg-white p-8 text-center shadow-soft sm:p-10">
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border-[3px] border-double border-stamp-500 text-stamp-500">
+          <Lock className="h-6 w-6" strokeWidth={2.5} />
         </div>
-        <h1 className="mt-5 font-display text-2xl font-semibold text-ink-900">
-          Нужен SoilPlus-сенсор
-        </h1>
-        <p className="mt-2 text-sm text-ink-600">
-          Эта страница доступна только владельцам устройства. Закажите
-          портативный набор за $70, и мы откроем ваш личный Dashboard,
-          автополив и AI-агроном с живыми данными.
-        </p>
+        <h1 className="mt-5 text-3xl uppercase text-ink-900">{t.title}</h1>
+        <p className="mx-auto mt-3 max-w-[52ch] text-ink-500">{t.body}</p>
 
-        <div className="mt-6 grid gap-2 text-left text-sm text-ink-700 sm:grid-cols-2">
-          <Feature icon={Cpu} title="Живой Dashboard">
-            График показаний 5 раз в секунду
-          </Feature>
-          <Feature icon={Cpu} title="Точная норма полива">
-            Формула с K_pH и K_EC под вашу почву
-          </Feature>
-          <Feature icon={Cpu} title="AI-агроном">
-            Gemini с контекстом вашего поля
-          </Feature>
-          <Feature icon={Cpu} title="Быстрый Connect">
-            Подключение к ESP32 за 30 секунд
-          </Feature>
-        </div>
+        <dl className="mt-7 grid gap-px overflow-hidden rounded-md border-2 border-ink-900/10 bg-ink-900/10 text-left sm:grid-cols-2">
+          {t.features.map(([title, desc]) => (
+            <div key={title} className="bg-paper p-4">
+              <dt className="font-display text-sm uppercase tracking-wide text-ink-900">{title}</dt>
+              <dd className="mt-1 text-[13px] text-ink-500">{desc}</dd>
+            </div>
+          ))}
+        </dl>
 
-        <div className="mt-7 flex flex-wrap justify-center gap-2">
-          <Link href="/shop" className="btn btn-primary">
-            <ShoppingBag className="h-4 w-4" />
-            Купить за $70
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Link href="/shop" className="btn btn-stamp">
+            <ShoppingBag className="h-4 w-4" strokeWidth={2.5} />
+            {t.buy}
           </Link>
           <Link href="/diagnose" className="btn btn-ghost">
-            Попробовать AI-диагностику
+            {t.tryDiagnose}
           </Link>
         </div>
-        <p className="mt-5 text-xs text-ink-500">
-          А бесплатные модули — Diagnose, Forecast, Weather, Heritage —
-          доступны вам и без устройства.
-        </p>
+        <p className="mt-6 text-xs text-ink-500">{t.free}</p>
       </div>
     </main>
-  );
-}
-
-function Feature({
-  icon: Icon,
-  title,
-  children,
-}: {
-  icon: typeof Cpu;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-ink-100 bg-white p-3">
-      <div className="flex items-center gap-2">
-        <Icon className="h-3.5 w-3.5 text-leaf-600" />
-        <span className="font-display text-xs font-semibold uppercase tracking-wide text-ink-700">
-          {title}
-        </span>
-      </div>
-      <p className="mt-1 text-xs text-ink-500">{children}</p>
-    </div>
   );
 }

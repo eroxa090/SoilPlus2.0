@@ -1,67 +1,104 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Caveat, Onest, Oswald, PT_Mono, Rubik_Dirt } from "next/font/google";
 import { SensorProvider } from "@/components/SensorProvider";
 import { UserProvider } from "@/components/UserProvider";
+import { LanguageProvider } from "@/components/LanguageProvider";
+import { MotionProvider } from "@/components/motion/Motion";
 import Navbar from "@/components/nav/Navbar";
 import Footer from "@/components/nav/Footer";
+import { DICTS } from "@/lib/i18n/dict";
+import { getLang } from "@/lib/i18n/server";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
+// Every family ships Cyrillic — the interface is bilingual.
+const onest = Onest({
+  subsets: ["latin", "cyrillic"],
   display: "swap",
-  variable: "--font-inter",
+  variable: "--font-onest",
   weight: ["400", "500", "600"],
 });
 
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
+// Condensed poster sans — the lettering printed on grain sacks
+const oswald = Oswald({
+  subsets: ["latin", "cyrillic"],
   display: "swap",
-  variable: "--font-jakarta",
-  weight: ["500", "600", "700"],
+  variable: "--font-oswald",
+  weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: "SoilPlus — Portable Soil Intelligence for Every Farmer",
-  description:
-    "Portable ESP32 soil sensor + AI agronomist. Photo disease diagnosis, yield forecast, weather-aware irrigation. Built for farmers of Kazakhstan.",
-  applicationName: "SoilPlus",
-  keywords: [
-    "SoilPlus",
-    "precision agriculture",
-    "ESP32",
-    "Kazakhstan",
-    "irrigation",
-    "soil moisture",
-    "plant disease AI",
-    "crop yield prediction",
-  ],
-};
+// Worn rubber-stamp ink, used sparingly for stamps and the wordmark
+const dirt = Rubik_Dirt({
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+  variable: "--font-dirt",
+  weight: "400",
+});
+
+const ptmono = PT_Mono({
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+  variable: "--font-ptmono",
+  weight: "400",
+});
+
+// Handwritten notes on tags
+const caveat = Caveat({
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+  variable: "--font-caveat",
+  weight: ["500", "700"],
+});
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = DICTS[await getLang()];
+  return {
+    title: t.meta.title,
+    description: t.meta.description,
+    applicationName: "SoilPlus",
+    keywords: [
+      "SoilPlus",
+      "precision agriculture",
+      "ESP32",
+      "Kazakhstan",
+      "irrigation",
+      "soil moisture",
+      "plant disease AI",
+      "crop yield prediction",
+    ],
+  };
+}
 
 export const viewport: Viewport = {
-  themeColor: "#FAFBF7",
+  themeColor: "#EFE4CC",
   width: "device-width",
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const lang = await getLang();
   return (
     <html
-      lang="en"
-      className={`${inter.variable} ${jakarta.variable}`}
+      lang={lang}
+      className={`${onest.variable} ${oswald.variable} ${dirt.variable} ${ptmono.variable} ${caveat.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-paper antialiased">
-        <UserProvider>
-          <SensorProvider>
-            <Navbar />
-            <div className="pt-16">{children}</div>
-            <Footer />
-          </SensorProvider>
-        </UserProvider>
+        <LanguageProvider initialLang={lang}>
+          <MotionProvider>
+            <UserProvider>
+              <SensorProvider>
+                <Navbar />
+                {/* clip: slide-in reveals start off-canvas and must not widen the page */}
+                <div className="overflow-x-clip pt-24">{children}</div>
+                <Footer />
+              </SensorProvider>
+            </UserProvider>
+          </MotionProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

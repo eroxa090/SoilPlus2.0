@@ -23,7 +23,7 @@ type DayForecast = {
 type Advice = {
   shouldIrrigateToday: boolean;
   reason: string;
-  tipsRu: string[];
+  tips: string[];
 };
 
 type Response = {
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
   const ip = req.headers.get("x-forwarded-for") ?? "local";
   if (!rateLimit(`weather:${ip}`, { max: 30, windowMs: 60_000 })) {
     return NextResponse.json(
-      { error: "Too many weather requests. Try again in a minute." },
+      { error: "Too many weather requests. Try again in a minute.", code: "rate_limited" },
       { status: 429 },
     );
   }
@@ -73,10 +73,11 @@ export async function GET(req: Request) {
     lon: num(searchParams.get("lon")),
     city: searchParams.get("city")?.trim() || undefined,
   };
+  const lang: Lang = searchParams.get("lang") === "en" ? "en" : "ru";
 
   const apiKey = process.env.OPENWEATHERMAP_API_KEY;
   if (!apiKey) {
-    return NextResponse.json(demoPayload());
+    return NextResponse.json(demoPayload(lang));
   }
 
   try {
@@ -98,7 +99,7 @@ export async function GET(req: Request) {
       }
       const g = (await gr.json()) as OwmGeo[];
       if (!g.length) {
-        return NextResponse.json({ error: "City not found" }, { status: 404 });
+        return NextResponse.json({ error: "City not found", code: "city_not_found" }, { status: 404 });
       }
       lat = g[0].lat;
       lon = g[0].lon;
@@ -116,7 +117,7 @@ export async function GET(req: Request) {
 
     const url =
       `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}` +
-      `&units=metric&appid=${apiKey}`;
+      `&units=metric&lang=${lang}&appid=${apiKey}`;
     const r = await fetch(url, { next: { revalidate: 600 } });
     if (!r.ok) {
       return NextResponse.json(
@@ -128,7 +129,7 @@ export async function GET(req: Request) {
 
     const week = aggregateDaily(data.list);
     const today = week[0];
-    const advice = adviceFor(today, week);
+    const advice = adviceFor(today, week, lang);
 
     const payload: Response = {
       place: place || data.city.name,
@@ -191,30 +192,43 @@ function dominantDescription(items: OwmForecastItem[]): string {
   return best;
 }
 
-function adviceFor(today: DayForecast, week: DayForecast[]): Advice {
+type Lang = "ru" | "en";
+
+function adviceFor(today: DayForecast, week: DayForecast[], lang: Lang): Advice {
+  const ru = lang === "ru";
   const next48Rain = (today.rainMm ?? 0) + (week[1]?.rainMm ?? 0);
   const hot = today.tMax >= 30;
   const windy = today.wind >= 8;
   const tips: string[] = [];
 
   let shouldIrrigate = true;
-  let reason = "Сегодня сухо — полив по норме.";
+  let reason = ru ? "Сегодня сухо — полив по норме." : "Dry today — water as normal.";
 
   if (next48Rain >= 8) {
     shouldIrrigate = false;
-    reason = `Ожидается ${next48Rain.toFixed(1)} мм осадков за 48 ч — отложите полив.`;
+    reason = ru
+      ? `Ожидается ${next48Rain.toFixed(1)} мм осадков за 48 ч — отложите полив.`
+      : `${next48Rain.toFixed(1)} mm of rain expected in 48 h — postpone watering.`;
   } else if (today.rainMm >= 3) {
     shouldIrrigate = false;
-    reason = `Сегодня идёт дождь (${today.rainMm.toFixed(1)} мм) — полив не нужен.`;
+    reason = ru
+      ? `Сегодня идёт дождь (${today.rainMm.toFixed(1)} мм) — полив не нужен.`
+      : `It's raining today (${today.rainMm.toFixed(1)} mm) — no watering needed.`;
   }
 
-  if (hot) tips.push("Поливайте ранним утром или после заката — днём высокие потери на испарение.");
-  if (windy) tips.push("Сильный ветер — откажитесь от дождевания, используйте капельный полив.");
+  if (hot) tips.push(ru
+    ? "Поливайте ранним утром или после заката — днём высокие потери на испарение."
+    : "Water early in the morning or after sunset — daytime evaporation losses are high.");
+  if (windy) tips.push(ru
+    ? "Сильный ветер — откажитесь от дождевания, используйте капельный полив."
+    : "Strong wind — skip sprinklers and use drip irrigation.");
   if (!hot && !windy && shouldIrrigate)
-    tips.push("Условия благоприятные — стандартная норма по культуре.");
-  if (!shouldIrrigate) tips.push("Проверьте дренаж — избыток влаги провоцирует гнили.");
+    tips.push(ru ? "Условия благоприятные — стандартная норма по культуре." : "Good conditions — the standard norm for your crop.");
+  if (!shouldIrrigate) tips.push(ru
+    ? "Проверьте дренаж — избыток влаги провоцирует гнили."
+    : "Check drainage — excess moisture invites rot.");
 
-  return { shouldIrrigateToday: shouldIrrigate, reason, tipsRu: tips };
+  return { shouldIrrigateToday: shouldIrrigate, reason, tips };
 }
 
 /* ---------- helpers ---------- */
@@ -233,7 +247,8 @@ function round1(v: number): number {
 
 /* ---------- demo fallback ---------- */
 
-function demoPayload(): Response & { warning: string } {
+function demoPayload(lang: Lang): Response & { warning: string } {
+  const ru = lang === "ru";
   const today: DayForecast = {
     date: new Date().toISOString().slice(0, 10),
     tMin: 14,
@@ -241,14 +256,14 @@ function demoPayload(): Response & { warning: string } {
     rainMm: 0,
     wind: 3.5,
     humidity: 48,
-    summary: "ясно",
+    summary: ru ? "ясно" : "clear sky",
   };
   const week: DayForecast[] = [
     today,
-    { ...today, date: plusDays(1), tMax: 28, rainMm: 1.2, summary: "малооблачно" },
-    { ...today, date: plusDays(2), tMax: 31, rainMm: 0, summary: "солнечно" },
-    { ...today, date: plusDays(3), tMax: 24, rainMm: 6.4, summary: "дождь" },
-    { ...today, date: plusDays(4), tMax: 22, rainMm: 2.1, summary: "облачно с прояснениями" },
+    { ...today, date: plusDays(1), tMax: 28, rainMm: 1.2, summary: ru ? "малооблачно" : "few clouds" },
+    { ...today, date: plusDays(2), tMax: 31, rainMm: 0, summary: ru ? "солнечно" : "sunny" },
+    { ...today, date: plusDays(3), tMax: 24, rainMm: 6.4, summary: ru ? "дождь" : "rain" },
+    { ...today, date: plusDays(4), tMax: 22, rainMm: 2.1, summary: ru ? "облачно с прояснениями" : "broken clouds" },
   ];
   return {
     place: "Oral (Uralsk)",
@@ -256,7 +271,7 @@ function demoPayload(): Response & { warning: string } {
     coords: { lat: 51.2333, lon: 51.3667 },
     today,
     week,
-    advice: adviceFor(today, week),
+    advice: adviceFor(today, week, lang),
     source: "demo",
     warning: "OPENWEATHERMAP_API_KEY not configured — showing demo forecast.",
   };

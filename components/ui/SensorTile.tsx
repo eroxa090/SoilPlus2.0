@@ -7,7 +7,10 @@ import {
   Tooltip,
   YAxis,
 } from "recharts";
+import { useId } from "react";
 import type { LucideIcon } from "lucide-react";
+import { useLang } from "@/components/LanguageProvider";
+import { DASHBOARD } from "@/lib/i18n/pages/dashboard";
 
 type Point = { t: number; value: number };
 type Tone = "leaf" | "aqua" | "amber";
@@ -24,13 +27,11 @@ type Props = {
   precision?: number;
 };
 
-const TONE: Record<
-  Tone,
-  { ring: string; text: string; fill: string; chip: string; stroke: string }
-> = {
-  leaf:  { ring: "ring-leaf-100",  text: "text-leaf-700",  fill: "#2B7440",  chip: "chip-leaf",  stroke: "#2B7440" },
-  aqua:  { ring: "ring-aqua-100",  text: "text-aqua-500",  fill: "#1E7F99",  chip: "chip-aqua",  stroke: "#1E7F99" },
-  amber: { ring: "ring-amber-100", text: "text-amber-500", fill: "#C88A1B",  chip: "chip-amber", stroke: "#C88A1B" },
+// Seed-sack palette
+const TONE: Record<Tone, { text: string; stroke: string }> = {
+  leaf:  { text: "text-leaf-700",  stroke: "#4A6128" },
+  aqua:  { text: "text-aqua-500",  stroke: "#3D6B6E" },
+  amber: { text: "text-amber-600", stroke: "#C38A1E" },
 };
 
 function verdict(v: number | null, min?: number, max?: number): "ideal" | "marginal" | "critical" | "idle" {
@@ -52,70 +53,69 @@ export default function SensorTile({
   idealMax,
   precision = 1,
 }: Props) {
-  const t = TONE[tone];
+  const { lang } = useLang();
+  const t = DASHBOARD[lang];
+  const c = TONE[tone];
   const state = verdict(value, idealMin, idealMax);
-  const gid = `grad-${label.replace(/\s+/g, "-").toLowerCase()}`;
+  // useId, not the label: labels hold spaces, Cyrillic and "·", which make
+  // fragile SVG url(#…) references.
+  const gid = `grad-${useId().replace(/:/g, "")}`;
 
   return (
-    <div className="card card-hover flex flex-col gap-4 p-6">
-      <div className="flex items-start justify-between">
+    <div className="card card-hover flex h-full flex-col gap-4 p-6">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className={`grid h-10 w-10 place-items-center rounded-xl bg-leaf-50 ${t.text}`}>
-            <Icon className="h-4 w-4" strokeWidth={1.8} />
+          <div className={`grid h-10 w-10 place-items-center rounded-md border-2 border-ink-900/15 bg-paper ${c.text}`}>
+            <Icon className="h-4 w-4" strokeWidth={2} />
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widex text-ink-400">
-              {label}
-            </p>
-            <p className="mt-0.5 font-mono text-[10px] text-ink-300">
+            <p className="font-display text-sm uppercase tracking-wide text-ink-900">{label}</p>
+            <p className="mt-0.5 font-mono text-[11px] text-ink-400">
               {idealMin !== undefined && idealMax !== undefined
-                ? `ideal ${idealMin}–${idealMax} ${unit}`
+                ? `${t.ideal} ${idealMin}–${idealMax} ${unit}`
                 : "—"}
             </p>
           </div>
         </div>
         <span
-          className={`chip ${
-            state === "ideal"
-              ? "chip-leaf"
-              : state === "marginal"
-                ? "chip-amber"
-                : state === "critical"
-                  ? "chip-amber"
-                  : "chip-ghost"
+          className={`chip shrink-0 ${
+            state === "ideal" ? "chip-leaf"
+            : state === "marginal" ? "chip-amber"
+            : state === "critical" ? "text-stamp-500"
+            : "chip-ghost"
           }`}
         >
-          {state === "idle" ? "awaiting" : state}
+          {t.state[state]}
         </span>
       </div>
 
       <div className="flex items-baseline gap-2">
-        <span className="font-display text-[44px] font-semibold leading-none text-ink-900 tabular-nums">
+        <span className="font-mono text-[44px] leading-none text-ink-900">
           {value === null ? "—" : value.toFixed(precision)}
         </span>
-        <span className="text-sm font-medium text-ink-400">{unit}</span>
+        <span className="text-sm text-ink-400">{unit}</span>
       </div>
 
-      <div className="h-24">
+      <div className="h-24 border-t-2 border-dashed border-ink-900/10 pt-2">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
             <defs>
               <linearGradient id={gid} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%"   stopColor={t.fill} stopOpacity={0.32} />
-                <stop offset="100%" stopColor={t.fill} stopOpacity={0} />
+                <stop offset="0%"   stopColor={c.stroke} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={c.stroke} stopOpacity={0} />
               </linearGradient>
             </defs>
             <YAxis domain={["auto", "auto"]} hide />
             <Tooltip
-              cursor={{ stroke: t.stroke, strokeOpacity: 0.25, strokeDasharray: "3 3" }}
+              cursor={{ stroke: c.stroke, strokeOpacity: 0.3, strokeDasharray: "3 3" }}
               contentStyle={{
-                background: "#fff",
-                border: "1px solid #E5E9E3",
-                borderRadius: 10,
+                background: "#FAF4E6",
+                border: "2px solid rgba(42,31,20,0.2)",
+                borderRadius: 6,
                 fontSize: 11,
-                color: "#0B1410",
+                color: "#2A1F14",
                 padding: "6px 10px",
-                boxShadow: "0 10px 30px -10px rgba(11,20,16,0.18)",
+                boxShadow: "3px 4px 0 0 rgba(42,31,20,0.12)",
               }}
               labelFormatter={() => ""}
               formatter={(v: number) => [`${v.toFixed(precision)} ${unit}`, label]}
@@ -123,12 +123,12 @@ export default function SensorTile({
             <Area
               type="monotone"
               dataKey="value"
-              stroke={t.stroke}
-              strokeWidth={1.8}
+              stroke={c.stroke}
+              strokeWidth={2}
               fill={`url(#${gid})`}
               isAnimationActive={false}
               dot={false}
-              activeDot={{ r: 3, fill: "#fff", stroke: t.stroke, strokeWidth: 2 }}
+              activeDot={{ r: 3, fill: "#FAF4E6", stroke: c.stroke, strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>
