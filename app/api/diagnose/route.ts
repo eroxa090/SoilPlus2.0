@@ -11,6 +11,8 @@ type Body = {
   mimeType: string;
   /** optional hint (crop, symptoms, region) */
   note?: string;
+  /** language for every human-readable field */
+  lang?: "ru" | "en";
 };
 
 type Diagnosis = {
@@ -46,6 +48,7 @@ export async function POST(req: Request) {
   }
 
   let { imageBase64, mimeType, note } = body;
+  const lang: Lang = body.lang === "en" ? "en" : "ru";
   if (!imageBase64 || !mimeType) {
     return NextResponse.json(
       { error: "imageBase64 and mimeType are required" },
@@ -67,7 +70,7 @@ export async function POST(req: Request) {
   if (!apiKey) {
     return NextResponse.json(
       {
-        diagnosis: offlineDiagnosis(note),
+        diagnosis: offlineDiagnosis(lang, note),
         model: "offline-heuristic",
         warning: "No GOOGLE_GENERATIVE_AI_API_KEY configured.",
       },
@@ -126,12 +129,12 @@ export async function POST(req: Request) {
       `}`,
       ``,
       `RULES:`,
-      `  • If image is NOT a plant, set isPlant=false, plantSpecies="not a plant", and disease="not a plant".`,
-      `  • If the plant is healthy, set disease="Healthy", severity="none", urgency="watch", and still fill plantSpecies + plantLatin.`,
+      `  • If image is NOT a plant, set isPlant=false, and plantSpecies and disease to "not a plant" (in the response language).`,
+      `  • If the plant is healthy, set disease to "Healthy" (in the response language), severity="none", urgency="watch", and still fill plantSpecies + plantLatin.`,
       `  • Be SPECIFIC, not generic. "Yellowing leaves" is bad. "Interveinal chlorosis on young leaves indicating Fe deficiency" is good.`,
       `  • At least 3 symptoms, 3 causes, 4 treatment steps, 3 prevention steps when there is a disease.`,
       `  • Treatment steps must include concrete numbers (dose, frequency, ml/L, days) where possible.`,
-      `  • If user wrote in Russian/Kazakh, respond in that language in ALL string fields (but keep Latin names in Latin).`,
+      `  • Write ALL string fields in ${lang === "ru" ? "Russian" : "English"} (keep Latin names in Latin).`,
       `  • Prefer organic + low-cost interventions first; list chemical only with active ingredient name and dose if severe.`,
       `  • Never refuse to answer — if uncertain, give your best hypothesis and lower the confidence score.`,
     ].join("\n");
@@ -147,8 +150,11 @@ export async function POST(req: Request) {
       console.error("[diagnose] unparseable model response:", text.slice(0, 500));
       return NextResponse.json({
         diagnosis: offlineDiagnosis(
+          lang,
           note,
-          "Модель не вернула корректный JSON — попробуйте ещё раз с более чётким фото.",
+          lang === "ru"
+            ? "Модель не вернула корректный JSON — попробуйте ещё раз с более чётким фото."
+            : "The model didn't return valid JSON — try again with a sharper photo.",
         ),
         model: "offline-heuristic",
         warning: "Model returned unparseable response.",
@@ -164,7 +170,7 @@ export async function POST(req: Request) {
     console.error("[diagnose] vision call error:", raw);
     const friendly = friendlyGeminiError(raw);
     return NextResponse.json({
-      diagnosis: offlineDiagnosis(note, friendly),
+      diagnosis: offlineDiagnosis(lang, note, friendly),
       model: "offline-heuristic",
       warning: friendly,
     });
@@ -265,8 +271,32 @@ function normaliseDiagnosis(raw: unknown): Diagnosis {
   };
 }
 
-function offlineDiagnosis(note?: string, reason?: string): Diagnosis {
+type Lang = "ru" | "en";
+
+function offlineDiagnosis(lang: Lang, note?: string, reason?: string): Diagnosis {
   const hasKey = Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+  if (lang === "en") {
+    return {
+      isPlant: true,
+      disease: "Analysis temporarily unavailable",
+      confidence: 0,
+      severity: "mild",
+      symptoms: ["Couldn't read the photo this time."],
+      causes: [!hasKey ? "GOOGLE_GENERATIVE_AI_API_KEY is not configured on the server." : reason ?? "The AI service is temporarily unavailable."],
+      treatment: [
+        "Try again in a minute — the request limit may have kicked in.",
+        "Take a close-up in daylight, without glare.",
+        "If it keeps failing, ask the AI agronomist for help.",
+      ],
+      prevention: [
+        "Rotate crops by season; don't plant nightshades after nightshades.",
+        "Keep leaves dry — water at the root in the morning.",
+        "Check the lower leaves for spots and mould once a week.",
+      ],
+      urgency: "watch",
+      notes: note,
+    };
+  }
   const cause = !hasKey
     ? "На сервере не настроен GOOGLE_GENERATIVE_AI_API_KEY."
     : reason ?? "AI-сервис временно недоступен.";

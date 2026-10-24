@@ -20,6 +20,7 @@ type Body = {
   region?: string;
   sowingDate?: string; // YYYY-MM-DD
   note?: string;
+  lang?: "ru" | "en";
 };
 
 type Forecast = {
@@ -90,6 +91,8 @@ export async function POST(req: Request) {
   }
 
   const reading = sanitiseReading(body.reading);
+  // Language of every human-readable field in the forecast.
+  const lang: Lang = body.lang === "en" ? "en" : "ru";
   const region = typeof body.region === "string" ? body.region.slice(0, 80) : "";
   const sowingDate =
     typeof body.sowingDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.sowingDate)
@@ -98,7 +101,7 @@ export async function POST(req: Request) {
   const note =
     typeof body.note === "string" ? body.note.slice(0, 500) : undefined;
 
-  const baseline = heuristicForecast(crop, areaM2, reading);
+  const baseline = heuristicForecast(crop, areaM2, reading, lang);
 
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!apiKey) {
@@ -156,7 +159,7 @@ export async function POST(req: Request) {
       ``,
       `RULES:`,
       ` • Never invent data you don't have — say so in notes.`,
-      ` • Respond in Russian if USER NOTE is in Russian/Kazakh.`,
+      ` • Write every text field (risks, boosters, notes) in ${lang === "ru" ? "Russian" : "English"}.`,
       ` • Prefer low-cost interventions first.`,
     ]
       .filter(Boolean)
@@ -176,7 +179,7 @@ export async function POST(req: Request) {
     const ai = parsed as Record<string, unknown>;
     const forecast: Forecast = {
       cropId: crop.id,
-      cropName: crop.nameRu || crop.name,
+      cropName: lang === "ru" ? crop.nameRu || crop.name : crop.name,
       yieldPerHa: num(ai.yieldPerHa, baseline.yieldPerHa),
       yieldTotalKg: num(ai.yieldTotalKg, baseline.yieldTotalKg),
       fitness: clamp(num(ai.fitness, baseline.fitness), 0, 100),
@@ -202,11 +205,15 @@ export async function POST(req: Request) {
 
 /* ---------- heuristic baseline ---------- */
 
+type Lang = "ru" | "en";
+
 function heuristicForecast(
   crop: Crop,
   areaM2: number,
   r: Reading,
+  lang: Lang,
 ): Forecast {
+  const ru = lang === "ru";
   const ref = YIELD_REF[crop.id] ?? 0;
 
   const moistFit = r.moist != null ? bandFit(r.moist, crop.wOptMin, crop.wOptMax) : 0.8;
@@ -226,29 +233,31 @@ function heuristicForecast(
 
   if (r.moist != null) {
     if (r.moist < crop.wOptMin) {
-      risks.push(`Влажность ${r.moist}% ниже нормы (${crop.wOptMin}-${crop.wOptMax}%) — дефицит полива`);
-      boosters.push("Настройте капельный полив до выхода в оптимум");
+      risks.push(ru
+        ? `Влажность ${r.moist}% ниже нормы (${crop.wOptMin}-${crop.wOptMax}%) — дефицит полива`
+        : `Moisture ${r.moist}% is below the norm (${crop.wOptMin}-${crop.wOptMax}%) — under-watered`);
+      boosters.push(ru ? "Настройте капельный полив до выхода в оптимум" : "Set up drip irrigation until moisture reaches the optimum");
     } else if (r.moist > crop.wOptMax) {
-      risks.push(`Переувлажнение (${r.moist}%) — риск корневой гнили`);
-      boosters.push("Уменьшите норму и улучшите дренаж");
+      risks.push(ru ? `Переувлажнение (${r.moist}%) — риск корневой гнили` : `Waterlogging (${r.moist}%) — risk of root rot`);
+      boosters.push(ru ? "Уменьшите норму и улучшите дренаж" : "Reduce the norm and improve drainage");
     }
   }
   if (r.ph != null) {
-    if (r.ph < crop.phMin) boosters.push("Внесите известь для подъёма pH");
-    else if (r.ph > crop.phMax) boosters.push("Внесите серу / гипс для снижения pH");
+    if (r.ph < crop.phMin) boosters.push(ru ? "Внесите известь для подъёма pH" : "Apply lime to raise pH");
+    else if (r.ph > crop.phMax) boosters.push(ru ? "Внесите серу / гипс для снижения pH" : "Apply sulfur / gypsum to lower pH");
   }
   if (r.tds != null && r.tds > crop.ecMax) {
-    risks.push(`Засоление: EC ${r.tds} > ${crop.ecMax} — промывной полив`);
-    boosters.push("Промывной полив пресной водой 1.5× нормы");
+    risks.push(ru ? `Засоление: EC ${r.tds} > ${crop.ecMax} — промывной полив` : `Salinity: EC ${r.tds} > ${crop.ecMax} — flush the soil`);
+    boosters.push(ru ? "Промывной полив пресной водой 1.5× нормы" : "Flush with fresh water at 1.5× the norm");
   }
-  if (risks.length === 0) boosters.push("Почва в норме — поддерживайте режим");
+  if (risks.length === 0) boosters.push(ru ? "Почва в норме — поддерживайте режим" : "Soil is in range — keep the current regime");
 
   const outlook: Forecast["outlook"] =
     fit >= 0.75 ? "ok" : fit >= 0.5 ? "marginal" : "risky";
 
   return {
     cropId: crop.id,
-    cropName: crop.nameRu || crop.name,
+    cropName: ru ? crop.nameRu || crop.name : crop.name,
     yieldPerHa,
     yieldTotalKg,
     fitness: Math.round(fit * 100),
@@ -258,7 +267,9 @@ function heuristicForecast(
     boosters,
     notes:
       ref === 0
-        ? "Это декоративное / дикорастущее растение — товарного урожая не даёт."
+        ? ru
+          ? "Это декоративное / дикорастущее растение — товарного урожая не даёт."
+          : "This is an ornamental / wild plant — it gives no marketable yield."
         : undefined,
   };
 }

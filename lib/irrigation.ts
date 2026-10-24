@@ -51,6 +51,8 @@ export type IrrigationInput = {
   soilDensity?: number;
   /** Optional override, field capacity in kg/kg. Defaults to 0.24 (loam). */
   fieldCapacity?: number;
+  /** Language of the human-readable reasons. Defaults to Russian. */
+  lang?: "ru" | "en";
 };
 
 export type IrrigationResult = {
@@ -65,7 +67,7 @@ export type IrrigationResult = {
   kEc:  number;
   /** Urgency bucket for the UI. */
   urgency: "none" | "low" | "medium" | "high" | "critical";
-  /** Human-readable status reasons, in Russian-friendly English. */
+  /** Human-readable status reasons, in the requested language. */
   reasons: string[];
   /** Hours until the next sensor check. */
   nextCheckHours: number;
@@ -94,8 +96,11 @@ export function computeIrrigation({
   areaM2,
   soilDensity = 1400,
   fieldCapacity = DEFAULT_FIELD_CAPACITY,
+  lang = "ru",
 }: IrrigationInput): IrrigationResult {
   const reasons: string[] = [];
+  const ru = lang === "ru";
+  const cropName = ru ? crop.nameRu : crop.name;
 
   // 1) Moisture deficit. deficitPct is in percentage points of field capacity;
   //    × fieldCapacity turns it into a gravimetric deficit (kg water / kg soil).
@@ -107,17 +112,23 @@ export function computeIrrigation({
   let kPh = 1.0;
   if (reading.ph < crop.phMin) {
     kPh = 0.85;
-    reasons.push(`Soil is too acidic for ${crop.name} (pH ${reading.ph.toFixed(2)}). Reduce volume by 15%; consider liming.`);
+    reasons.push(ru
+      ? `Почва слишком кислая для культуры «${cropName}» (pH ${reading.ph.toFixed(2)}). Уменьшите объём на 15% и подумайте об известковании.`
+      : `Soil is too acidic for ${cropName} (pH ${reading.ph.toFixed(2)}). Reduce volume by 15%; consider liming.`);
   } else if (reading.ph > crop.phMax) {
     kPh = 0.85;
-    reasons.push(`Soil is too alkaline for ${crop.name} (pH ${reading.ph.toFixed(2)}). Reduce volume by 15%; consider sulfur amendment.`);
+    reasons.push(ru
+      ? `Почва слишком щелочная для культуры «${cropName}» (pH ${reading.ph.toFixed(2)}). Уменьшите объём на 15% и подумайте о внесении серы.`
+      : `Soil is too alkaline for ${cropName} (pH ${reading.ph.toFixed(2)}). Reduce volume by 15%; consider sulfur amendment.`);
   }
 
   // 3) EC / salinity correction
   let kEc = 1.0;
   if (reading.tds > crop.ecMax) {
     kEc = 1.3;
-    reasons.push(`Salinity high (${reading.tds} ppm vs. max ${crop.ecMax}). Apply 30% extra water to flush salts below the root zone.`);
+    reasons.push(ru
+      ? `Засоление высокое (${reading.tds} ppm при максимуме ${crop.ecMax}). Дайте на 30% больше воды, чтобы промыть соли ниже корней.`
+      : `Salinity high (${reading.tds} ppm vs. max ${crop.ecMax}). Apply 30% extra water to flush salts below the root zone.`);
   }
 
   // 4) Volume: V = ΔW × НВ × D × ρ × S × K_pH × K_EC  → kg ≈ L
@@ -134,9 +145,13 @@ export function computeIrrigation({
   else                        urgency = "critical";
 
   if (urgency === "none") {
-    reasons.unshift(`Влажность в оптимуме (${crop.wOptMin}–${crop.wOptMax}% НВ) — поливать не нужно.`);
+    reasons.unshift(ru
+      ? `Влажность в оптимуме (${crop.wOptMin}–${crop.wOptMax}% НВ) — поливать не нужно.`
+      : `Moisture is within the optimum (${crop.wOptMin}–${crop.wOptMax}% of field capacity) — no watering needed.`);
   } else {
-    reasons.unshift(`Дефицит влаги: ${deficitPct.toFixed(1)} п.п. от оптимума ${wOptMid}% НВ.`);
+    reasons.unshift(ru
+      ? `Дефицит влаги: ${deficitPct.toFixed(1)} п.п. от оптимума ${wOptMid}% НВ.`
+      : `Moisture deficit: ${deficitPct.toFixed(1)} pp below the ${wOptMid}% field-capacity optimum.`);
   }
 
   // 6) Watering schedule. Cap a single event at 35 L/m² (FAO-56) — split into
@@ -161,12 +176,14 @@ export function computeIrrigation({
           : 24;
 
   if (eventsNeeded > 1) {
-    reasons.push(
-      `Полная норма ${litresPerM2Total.toFixed(0)} л/м² слишком велика для одного полива — разбейте на ${eventsNeeded} приёма по ${litresPerM2PerEvent} л/м² с интервалом ${hoursBetweenEvents} ч (вода должна впитаться в корневую зону).`,
+    reasons.push(ru
+      ? `Полная норма ${litresPerM2Total.toFixed(0)} л/м² слишком велика для одного полива — разбейте на ${eventsNeeded} приёма по ${litresPerM2PerEvent} л/м² с интервалом ${hoursBetweenEvents} ч (вода должна впитаться в корневую зону).`
+      : `The full ${litresPerM2Total.toFixed(0)} L/m² is too much for one watering — split it into ${eventsNeeded} rounds of ${litresPerM2PerEvent} L/m², ${hoursBetweenEvents} h apart, so the water soaks into the root zone.`,
     );
   } else if (eventsNeeded === 1) {
-    reasons.push(
-      `Полейте один раз: ${litresPerEvent.toLocaleString()} л на ваш участок (${litresPerM2PerEvent} л/м²).`,
+    reasons.push(ru
+      ? `Полейте один раз: ${litresPerEvent.toLocaleString("ru-RU")} л на ваш участок (${litresPerM2PerEvent} л/м²).`
+      : `Water once: ${litresPerEvent.toLocaleString("en-US")} L for your plot (${litresPerM2PerEvent} L/m²).`,
     );
   }
 

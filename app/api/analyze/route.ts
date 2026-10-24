@@ -18,6 +18,8 @@ type Reading = {
 type Plant = {
   id?: string;
   name: string;
+  /** Optional Russian name, used in Russian offline verdicts. */
+  nameRu?: string;
   latin: string;
   story: string;
 };
@@ -107,10 +109,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { reading, plant } = (body ?? {}) as {
+  const { reading, plant, lang: rawLang } = (body ?? {}) as {
     reading?: unknown;
     plant?: Plant;
+    lang?: unknown;
   };
+  // Language of the verdict; plant profiles stay keyed by the English name.
+  const lang: Lang = rawLang === "en" ? "en" : "ru";
   if (!isReading(reading) || !plant?.name) {
     return NextResponse.json(
       { error: "Body must be { reading, plant:{name,latin,story} }" },
@@ -127,7 +132,7 @@ export async function POST(req: Request) {
   if (!apiKey) {
     return NextResponse.json({
       score,
-      verdict: offlineVerdict(reading, plant, profile, score),
+      verdict: offlineVerdict(reading, plant, profile, score, lang),
       model: "offline-heuristic",
       parts,
     });
@@ -147,7 +152,7 @@ export async function POST(req: Request) {
     });
 
     const result = await model.generateContent(
-      buildPrompt(reading, plant, profile, score, parts),
+      buildPrompt(reading, plant, profile, score, parts, lang),
     );
     const text = result.response.text().trim();
     const parsed = safeParseJson(text);
@@ -160,7 +165,7 @@ export async function POST(req: Request) {
     const verdict =
       typeof parsed?.verdict === "string" && parsed.verdict.trim().length > 0
         ? parsed.verdict.trim()
-        : offlineVerdict(reading, plant, profile, finalScore);
+        : offlineVerdict(reading, plant, profile, finalScore, lang);
 
     return NextResponse.json({
       score: finalScore,
@@ -171,7 +176,7 @@ export async function POST(req: Request) {
   } catch (e) {
     return NextResponse.json({
       score,
-      verdict: offlineVerdict(reading, plant, profile, score),
+      verdict: offlineVerdict(reading, plant, profile, score, lang),
       model: "offline-heuristic",
       parts,
       warning: e instanceof Error ? e.message : "Gemini call failed",
@@ -183,12 +188,15 @@ export async function POST(req: Request) {
 /*  Prompt                                                              */
 /* ==================================================================== */
 
+type Lang = "ru" | "en";
+
 function buildPrompt(
   reading: Reading,
   plant: Plant,
   profile: PlantProfile,
   baseline: number,
   parts: Record<string, number>,
+  lang: Lang,
 ) {
   return [
     `SYSTEM:`,
@@ -238,6 +246,8 @@ function buildPrompt(
     `STYLE: measured, literary, quietly urgent. First-person plural ("we") is welcome.`,
     `Never use emojis, markdown, bullet points, or English filler like "indeed" or`,
     `"in conclusion". Output JSON only.`,
+    ``,
+    `LANGUAGE: write the "verdict" in ${lang === "ru" ? "Russian" : "English"}.`,
   ].join("\n");
 }
 
@@ -264,7 +274,9 @@ function offlineVerdict(
   plant: Plant,
   profile: PlantProfile,
   score: number,
+  lang: Lang,
 ): string {
+  if (lang === "ru") return offlineVerdictRu(reading, plant, profile, score);
   const issues: string[] = [];
   if (reading.ph < profile.bands.ph[0]) issues.push("acidity");
   if (reading.ph > profile.bands.ph[1]) issues.push("alkalinity");
@@ -289,5 +301,39 @@ function offlineVerdict(
     `The soil reads ${state} for ${plant.name}.${issueText}`,
     `Left uncorrected, these numbers work directly against the root architecture ${plant.name} has relied on for generations.`,
     `To protect this chemistry is to protect a piece of Kazakh memory — ${plant.name} is not a crop, it is a witness.`,
+  ].join(" ");
+}
+
+function offlineVerdictRu(
+  reading: Reading,
+  plant: Plant,
+  profile: PlantProfile,
+  score: number,
+): string {
+  const name = plant.nameRu ?? plant.name;
+  const issues: string[] = [];
+  if (reading.ph < profile.bands.ph[0]) issues.push("кислотность");
+  if (reading.ph > profile.bands.ph[1]) issues.push("щёлочность");
+  if (reading.moist < profile.bands.moist[0]) issues.push("засуху");
+  if (reading.moist > profile.bands.moist[1]) issues.push("переувлажнение");
+  if (reading.tds > profile.bands.tds[1]) issues.push("засоление");
+  if (reading.tds < profile.bands.tds[0]) issues.push("нехватку питания");
+  if (reading.temp > profile.bands.temp[1]) issues.push("перегрев");
+  if (reading.temp < profile.bands.temp[0]) issues.push("переохлаждение");
+
+  const state =
+    score >= 70
+      ? "в спокойном равновесии"
+      : score >= 40
+        ? "под заметным стрессом"
+        : "в критическом состоянии";
+
+  const issueText =
+    issues.length > 0 ? ` Земля показывает ${issues.join(", ")}.` : "";
+
+  return [
+    `Почва для культуры «${name}» ${state}.${issueText}`,
+    `Если ничего не менять, эти цифры работают против корней, на которые «${name}» опирался поколениями.`,
+    `Беречь эту почву — значит беречь часть казахской памяти: «${name}» не просто культура, а свидетель.`,
   ].join(" ");
 }

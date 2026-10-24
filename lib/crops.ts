@@ -37,6 +37,7 @@ export type Crop = {
   rootDepth: number; // m
   /** Short agronomic note for the UI. */
   note: string;
+  noteRu: string;
 };
 
 export const CROPS: Crop[] = [
@@ -52,6 +53,7 @@ export const CROPS: Crop[] = [
     tOptMin: 12, tOptMax: 24,
     rootDepth: 0.6,
     note: "The strategic grain of the Kazakh steppe — stable yields require steady moisture in the tillering phase.",
+    noteRu: "Стратегическое зерно казахской степи: для стабильного урожая нужна ровная влажность в фазе кущения.",
   },
   {
     id: "sunflower",
@@ -65,6 +67,7 @@ export const CROPS: Crop[] = [
     tOptMin: 16, tOptMax: 28,
     rootDepth: 0.8,
     note: "Deep-rooted, drought-tolerant — most sensitive to moisture during flowering.",
+    noteRu: "Глубокие корни и засухоустойчивость; сильнее всего зависит от влаги во время цветения.",
   },
   {
     id: "potato",
@@ -78,6 +81,7 @@ export const CROPS: Crop[] = [
     tOptMin: 14, tOptMax: 22,
     rootDepth: 0.4,
     note: "Prefers slightly acidic loam; over-irrigation causes rot, under-irrigation cracks tubers.",
+    noteRu: "Любит слабокислый суглинок: перелив вызывает гниль, недолив — трещины на клубнях.",
   },
   {
     id: "tomato",
@@ -91,6 +95,7 @@ export const CROPS: Crop[] = [
     tOptMin: 18, tOptMax: 26,
     rootDepth: 0.5,
     note: "Narrow salinity tolerance — salt accumulation blossoms end-rot quickly.",
+    noteRu: "Узкий допуск по солям: при засолении быстро появляется вершинная гниль.",
   },
   {
     id: "corn",
@@ -104,6 +109,7 @@ export const CROPS: Crop[] = [
     tOptMin: 18, tOptMax: 30,
     rootDepth: 0.7,
     note: "Peak demand at tasseling; a 5-day deficit reduces yield dramatically.",
+    noteRu: "Пик потребления воды — выбрасывание метёлки; пять дней дефицита резко снижают урожай.",
   },
   {
     id: "alfalfa",
@@ -117,6 +123,7 @@ export const CROPS: Crop[] = [
     tOptMin: 15, tOptMax: 28,
     rootDepth: 1.2,
     note: "Moderately sensitive to salinity (FAO ECe 2.0 dS/m); deep taproot reaching 1.2 m.",
+    noteRu: "Умеренно чувствительна к засолению (FAO: ECe 2,0 dS/m); стержневой корень уходит на 1,2 м.",
   },
   {
     id: "cotton",
@@ -130,6 +137,7 @@ export const CROPS: Crop[] = [
     tOptMin: 22, tOptMax: 32,
     rootDepth: 0.9,
     note: "Salt-tolerant fiber crop — common in southern Kazakhstan irrigation zones.",
+    noteRu: "Солеустойчивая техническая культура, обычная для орошаемых зон юга Казахстана.",
   },
   {
     id: "barley",
@@ -143,6 +151,7 @@ export const CROPS: Crop[] = [
     tOptMin: 10, tOptMax: 22,
     rootDepth: 0.6,
     note: "More salt-tolerant than wheat; the pragmatic choice for marginal plots.",
+    noteRu: "Солеустойчивее пшеницы; практичный выбор для бедных участков.",
   },
   {
     id: "soybean",
@@ -156,6 +165,7 @@ export const CROPS: Crop[] = [
     tOptMin: 18, tOptMax: 28,
     rootDepth: 0.6,
     note: "Fixes atmospheric nitrogen — good rotation partner for cereals.",
+    noteRu: "Фиксирует азот из воздуха — хороший партнёр в севообороте с зерновыми.",
   },
   {
     id: "aport-apple",
@@ -169,6 +179,7 @@ export const CROPS: Crop[] = [
     tOptMin: 12, tOptMax: 22,
     rootDepth: 1.5,
     note: "Heritage orchard — the mother apple of Central Asia. Cool, slightly acidic loam.",
+    noteRu: "Садовое наследие — праматерь яблонь Центральной Азии. Прохладный слабокислый суглинок.",
   },
   {
     id: "tulipa",
@@ -182,6 +193,7 @@ export const CROPS: Crop[] = [
     tOptMin: 8, tOptMax: 18,
     rootDepth: 0.25,
     note: "Wild progenitor of garden tulips — demands drainage; rots in wet soil.",
+    noteRu: "Дикий предок садовых тюльпанов: нужен дренаж, во влажной почве загнивает.",
   },
   {
     id: "saxaul",
@@ -195,6 +207,7 @@ export const CROPS: Crop[] = [
     tOptMin: 15, tOptMax: 35,
     rootDepth: 2.0,
     note: "Desert halophyte — the anchor of Betpaq-Dala and the Aral. Tolerates saline ground.",
+    noteRu: "Пустынный галофит, опора Бетпак-Далы и Приаралья. Выносит засолённую землю.",
   },
 ];
 
