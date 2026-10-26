@@ -55,6 +55,9 @@
 #include "secrets.h"
 WiFiMulti wifiMulti;
 
+/* Bumped when the meaning of the broadcast data changes. 2 = pH sign fixed. */
+constexpr int FIRMWARE_VERSION = 2;
+
 /* =====================================================================
  *  2)  PIN MAP
  * =====================================================================*/
@@ -86,8 +89,10 @@ constexpr int   ADC_RES = 4095;    // 12-bit
  *    Also : cal show   (print current values) · cal reset (defaults)
  *  Every command saves to flash immediately and survives reboot.
  *
- *  pH math:  pH(v) = 7 + (V7 − v) × 3 / (V7 − V4)
+ *  pH math:  pH(v) = 7 + (V7 − v) × 3 / (V4 − V7)
  *    → at v = V7 gives pH 7; at v = V4 gives pH 4; linear between.
+ *    (Before FIRMWARE_VERSION 2 the denominator was V7 − V4, which mirrored
+ *    the whole scale around 7: the pH 4 buffer read as 10.)
  *  TDS math: raw DFRobot polynomial × tdsFactor  (factor set by
  *    'cal tds <ppm>' so the known solution reads exactly <ppm>).
  * =====================================================================*/
@@ -166,7 +171,7 @@ inline float adcToVolts(int raw) {
  * =====================================================================*/
 
 float computePH(float volts) {
-  const float span = phV7 - phV4;                  // volts per 3 pH units
+  const float span = phV4 - phV7;                  // volts across 3 pH units
   if (span == 0.0f) return 7.0f;                   // guard
   float ph = 7.0f + (phV7 - volts) * 3.0f / span;
   if (ph < 0.0f)  ph = 0.0f;
@@ -175,7 +180,10 @@ float computePH(float volts) {
 }
 
 int computeTDS(float volts, float waterTempC) {
-  // Temperature compensation (DFRobot reference design)
+  // Temperature compensation (DFRobot reference design). A NAN temperature
+  // means the DS18B20 is missing: skip compensation (= assume 25 °C) rather
+  // than compensate to 0 °C, which doubled the reading.
+  if (isnan(waterTempC)) waterTempC = 25.0f;
   float comp = 1.0f + 0.02f * (waterTempC - 25.0f);
   if (comp <= 0.01f) comp = 1.0f;
   float v = volts / comp;
@@ -201,16 +209,21 @@ int computeTDSraw(float volts, float waterTempC) {
 
 int computeMoisture(int raw) {
   // DRY endpoint is a higher ADC (less capacitance) than WET.
+  // Equal endpoints would divide by zero — an integer divide-by-zero panics
+  // the ESP32, and since calibration reloads on boot it would crash-loop.
+  if (moistDry == moistWet) return 0;
   long pct = ((long)(moistDry - raw) * 100L) / (moistDry - moistWet);
   if (pct < 0)   pct = 0;
   if (pct > 100) pct = 100;
   return (int)pct;
 }
 
+// NAN when the DS18B20 does not answer. It used to return 0.0 °C, which is
+// indistinguishable from real frost and fed a fake 0 °C into TDS compensation.
 float readTemperatureC() {
   tempSensor.requestTemperatures();
   float t = tempSensor.getTempCByIndex(0);
-  if (t == DEVICE_DISCONNECTED_C || t < -50.0f || t > 125.0f) return 0.0f;
+  if (t == DEVICE_DISCONNECTED_C || t < -50.0f || t > 125.0f) return NAN;
   return t;
 }
 
@@ -338,14 +351,24 @@ void handleSerialCommand(String cmd) {
   }
 
   if (cmd == "cal moistdry") {
-    moistDry = readAnalogFiltered(PIN_MOISTURE);
+    int v = readAnalogFiltered(PIN_MOISTURE);
+    if (abs(v - moistWet) < 200) {
+      Serial.printf("[CAL] raw %d is almost the WET point (%d) — is the probe dry and in air? Not saved.\n", v, moistWet);
+      return;
+    }
+    moistDry = v;
     saveCalibration();
     Serial.printf("[CAL] Moisture DRY set: raw = %d (saved)\n", moistDry);
     return;
   }
 
   if (cmd == "cal moistwet") {
-    moistWet = readAnalogFiltered(PIN_MOISTURE);
+    int v = readAnalogFiltered(PIN_MOISTURE);
+    if (abs(v - moistDry) < 200) {
+      Serial.printf("[CAL] raw %d is almost the DRY point (%d) — is the probe in water? Not saved.\n", v, moistDry);
+      return;
+    }
+    moistWet = v;
     saveCalibration();
     Serial.printf("[CAL] Moisture WET set: raw = %d (saved)\n", moistWet);
     return;
@@ -488,10 +511,14 @@ void loop() {
     lastReading = r;
 
     StaticJsonDocument<128> doc;
-    doc["temp"]  = roundf(r.tempC * 100) / 100.0f;
+    // The site expects a number; 0 still marks "no temperature sensor".
+    doc["temp"]  = isnan(r.tempC) ? 0.0f : roundf(r.tempC * 100) / 100.0f;
     doc["ph"]    = roundf(r.ph    * 100) / 100.0f;
     doc["tds"]   = r.tds;
     doc["moist"] = r.moist;
+    // Lets the site tell this build from older ones whose pH scale was
+    // mirrored, so it un-mirrors only old data and never double-corrects.
+    doc["fw"]    = FIRMWARE_VERSION;
 
     char buf[128];
     size_t n = serializeJson(doc, buf, sizeof(buf));

@@ -38,6 +38,19 @@ const isReading = (v: unknown): v is SoilReading => {
 };
 
 /**
+ * Firmware before version 2 mirrored the pH scale around 7: it divided by
+ * (V7 − V4) instead of (V4 − V7), so a pH-4 buffer read 10 and alkaline soil
+ * read acidic. The error is an exact mirror (true pH = 14 − sent pH), so it
+ * is undone here for boards that have not been reflashed. Version-2 boards
+ * send `fw`, and their values pass through untouched.
+ */
+const correctLegacyPh = (r: SoilReading & { fw?: unknown }): SoilReading => {
+  const { fw, ...reading } = r;
+  if (typeof fw === "number" && fw >= 2) return reading;
+  return { ...reading, ph: Math.round((14 - reading.ph) * 100) / 100 };
+};
+
+/**
  * Connects to the ESP32 WebSocket server (ws://<ip>:81/) and keeps a
  * rolling buffer of sensor samples. Reconnects automatically with
  * exponential back-off when the hotspot dips.
@@ -114,8 +127,9 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
         try {
           const parsed = JSON.parse(evt.data as string);
           if (!isReading(parsed)) return;
-          const sample: SoilSample = { ...parsed, t: Date.now() };
-          setLatest(parsed);
+          const reading = correctLegacyPh(parsed);
+          const sample: SoilSample = { ...reading, t: Date.now() };
+          setLatest(reading);
           setHistory((prev) => {
             const next = prev.length >= maxSamples ? prev.slice(1) : prev.slice();
             next.push(sample);

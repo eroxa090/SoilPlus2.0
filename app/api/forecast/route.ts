@@ -239,7 +239,7 @@ function heuristicForecast(
   }
   if (r.tds != null && r.tds > crop.ecMax) {
     risks.push(`Засоление: EC ${r.tds} > ${crop.ecMax} — промывной полив`);
-    boosters.push("Промывной полив пресной водой 1.5× нормы");
+    boosters.push("Промывной полив: на 30% больше нормы (K_EC = 1.3), чтобы вымыть соли ниже корней");
   }
   if (risks.length === 0) boosters.push("Почва в норме — поддерживайте режим");
 
