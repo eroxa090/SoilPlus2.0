@@ -43,9 +43,16 @@ function LoginInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
+      // A non-JSON reply (e.g. an error page while the database is asleep)
+      // used to surface as Safari's cryptic "The string did not match the
+      // expected pattern" — report it as what it is.
+      const data = await res.json().catch(() => null);
+      if (!data) {
+        setError("Сервер недоступен. Попробуйте чуть позже.");
+        return;
+      }
       if (!res.ok) {
-        setError(data?.error ?? "Не удалось войти.");
+        setError(data.error ?? "Не удалось войти.");
         return;
       }
       await refresh();
@@ -90,9 +97,14 @@ function LoginInner() {
             />
           </label>
           <label className="block">
-            <span className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-700">
-              <Lock className="h-3.5 w-3.5" />
-              Пароль
+            <span className="mb-1.5 flex items-center justify-between text-sm font-medium text-ink-700">
+              <span className="flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5" />
+                Пароль
+              </span>
+              <Link href="/forgot-password" className="text-xs font-medium text-leaf-700 hover:underline">
+                Забыли пароль?
+              </Link>
             </span>
             <input
               type="password"
