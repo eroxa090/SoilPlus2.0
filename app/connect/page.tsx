@@ -9,7 +9,8 @@ import PageHeader from "@/components/PageHeader";
 import { AnimatedNumber, DrawnCheck, Reveal, SewLine, StaggerItem, StaggerList } from "@/components/motion/Motion";
 import { CONNECT } from "@/lib/i18n/pages/connect";
 
-// Must match SOILPLUS_WIFI_SSID in firmware/soilplus/secrets.h (gitignored)
+// Main hotspot: SOILPLUS_WIFI_SSID in firmware/soilplus/secrets.h (gitignored).
+// The board also knows up to two more (_2, _3) and joins whichever is nearby.
 const HOTSPOT_SSID = "iPhoneyers";
 
 export default function ConnectPage() {
