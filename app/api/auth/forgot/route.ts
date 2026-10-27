@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for") ?? "local";
   if (!rateLimit(`forgot:${ip}`, { max: 5, windowMs: 60_000 })) {
     return NextResponse.json(
-      { error: "Слишком много запросов. Попробуйте через минуту." },
+      { error: "Слишком много запросов. Попробуйте через минуту.", code: "rate_limited" },
       { status: 429 },
     );
   }
@@ -33,18 +33,18 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON", code: "invalid_json" }, { status: 400 });
   }
   const email = (body.email ?? "").trim().toLowerCase();
   if (!/.+@.+\..+/.test(email)) {
-    return NextResponse.json({ error: "Введите корректный email." }, { status: 400 });
+    return NextResponse.json({ error: "Введите корректный email.", code: "invalid_email" }, { status: 400 });
   }
 
   // Answer the same way whether or not the account exists, so this form
   // can't be used to find out who is registered.
   if (process.env.NODE_ENV === "production" && !mailConfigured()) {
     return NextResponse.json(
-      { error: "Восстановление по почте пока не настроено. Напишите администратору." },
+      { error: "Восстановление по почте пока не настроено. Напишите администратору.", code: "mail_off" },
       { status: 503 },
     );
   }
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error("[password-reset] forgot failed:", e);
     return NextResponse.json(
-      { error: "Не удалось отправить письмо. Попробуйте позже." },
+      { error: "Не удалось отправить письмо. Попробуйте позже.", code: "mail_failed" },
       { status: 500 },
     );
   }

@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for") ?? "local";
   if (!rateLimit(`reset:${ip}`, { max: 10, windowMs: 60_000 })) {
     return NextResponse.json(
-      { error: "Слишком много попыток. Попробуйте через минуту." },
+      { error: "Слишком много попыток. Попробуйте через минуту.", code: "rate_limited" },
       { status: 429 },
     );
   }
@@ -18,15 +18,15 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON", code: "invalid_json" }, { status: 400 });
   }
   const { token, password } = body;
   if (!token || !password) {
-    return NextResponse.json({ error: "token & password required" }, { status: 400 });
+    return NextResponse.json({ error: "token & password required", code: "missing_fields" }, { status: 400 });
   }
   if (password.length < 8) {
     return NextResponse.json(
-      { error: "Пароль должен быть не короче 8 символов." },
+      { error: "Пароль должен быть не короче 8 символов.", code: "short_password" },
       { status: 400 },
     );
   }
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     const user = await resetPasswordWithToken(token, password);
     if (!user) {
       return NextResponse.json(
-        { error: "Ссылка недействительна или устарела. Запросите новую." },
+        { error: "Ссылка недействительна или устарела. Запросите новую.", code: "reset_expired" },
         { status: 400 },
       );
     }
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error("[password-reset] reset failed:", e);
     return NextResponse.json(
-      { error: "Не удалось сменить пароль. Попробуйте позже." },
+      { error: "Не удалось сменить пароль. Попробуйте позже.", code: "reset_failed" },
       { status: 500 },
     );
   }

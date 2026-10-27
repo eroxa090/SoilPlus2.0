@@ -17,6 +17,10 @@ const ERRORS: Record<Lang, Record<string, string>> = {
     auth_required: "Сначала войдите или зарегистрируйтесь.",
     bad_quantity: "Количество должно быть от 1 до 100.",
     city_not_found: "Город не найден. Проверьте название.",
+    mail_off: "Восстановление по почте пока не настроено. Напишите администратору.",
+    mail_failed: "Не удалось отправить письмо. Попробуйте позже.",
+    reset_expired: "Ссылка недействительна или устарела. Запросите новую.",
+    reset_failed: "Не удалось сменить пароль. Попробуйте позже.",
   },
   en: {
     rate_limited: "Too many attempts. Wait a minute and try again.",
@@ -30,6 +34,10 @@ const ERRORS: Record<Lang, Record<string, string>> = {
     auth_required: "Please log in or sign up first.",
     bad_quantity: "Quantity must be between 1 and 100.",
     city_not_found: "City not found. Check the name.",
+    mail_off: "Password recovery by email isn't set up yet. Contact the administrator.",
+    mail_failed: "Couldn't send the email. Try again later.",
+    reset_expired: "This link is invalid or has expired. Request a new one.",
+    reset_failed: "Couldn't change the password. Try again later.",
   },
 };
 
