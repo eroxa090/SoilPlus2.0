@@ -47,7 +47,14 @@ function LoginInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
+      // A non-JSON reply (e.g. an error page while the database is asleep)
+      // used to surface as Safari's cryptic "The string did not match the
+      // expected pattern" — report it as what it is.
+      const data = await res.json().catch(() => null);
+      if (!data) {
+        setError(t.serverDown);
+        return;
+      }
       if (!res.ok) {
         setError(apiErrorText(lang, data, t.loginFailed));
         return;
@@ -96,6 +103,9 @@ function LoginInner() {
             autoComplete="current-password"
           />
         </Field>
+        <p className="-mt-2 text-right">
+          <Link href="/forgot-password" className="link-quiet text-xs">{t.forgot}</Link>
+        </p>
 
         {error && (
           <div role="alert" className="flex items-start gap-2 rounded-md border-2 border-stamp-500/40 bg-rose-50 p-3 text-sm text-stamp-600">

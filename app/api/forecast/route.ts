@@ -248,7 +248,7 @@ function heuristicForecast(
   }
   if (r.tds != null && r.tds > crop.ecMax) {
     risks.push(ru ? `Засоление: EC ${r.tds} > ${crop.ecMax} — промывной полив` : `Salinity: EC ${r.tds} > ${crop.ecMax} — flush the soil`);
-    boosters.push(ru ? "Промывной полив пресной водой 1.5× нормы" : "Flush with fresh water at 1.5× the norm");
+    boosters.push(ru ? "Промывной полив: на 30% больше нормы (K_EC = 1.3), чтобы вымыть соли ниже корней" : "Flush irrigation: 30% above the norm (K_EC = 1.3) to wash salts below the roots");
   }
   if (risks.length === 0) boosters.push(ru ? "Почва в норме — поддерживайте режим" : "Soil is in range — keep the current regime");
 
