@@ -51,6 +51,27 @@ const correctLegacyPh = (r: SoilReading & { fw?: unknown }): SoilReading => {
 };
 
 /**
+ * The pH probe is high-impedance and the ESP32 ADC picks up Wi-Fi noise, so
+ * consecutive readings of a probe sitting still jump by ±0.2 pH; TDS jitters
+ * the same way. A median of the last 25 readings (5 s at the board's 5 Hz
+ * broadcast) drops the spikes; pH and salinity drift far slower than that.
+ */
+const MEDIAN_OF = 25;
+
+function median(xs: number[]) {
+  const s = [...xs].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+/** Push `x` into `win`, keep the last MEDIAN_OF values, return their median. */
+function rollingMedian(win: number[], x: number) {
+  win.push(x);
+  if (win.length > MEDIAN_OF) win.shift();
+  return median(win);
+}
+
+/**
  * Connects to the ESP32 WebSocket server (ws://<ip>:81/) and keeps a
  * rolling buffer of sensor samples. Reconnects automatically with
  * exponential back-off when the hotspot dips.
@@ -67,6 +88,8 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
   const backoffRef = useRef(500);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldRunRef = useRef(autoConnect);
+  const phWindowRef = useRef<number[]>([]);
+  const tdsWindowRef = useRef<number[]>([]);
 
   const close = useCallback(() => {
     shouldRunRef.current = false;
@@ -127,7 +150,12 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
         try {
           const parsed = JSON.parse(evt.data as string);
           if (!isReading(parsed)) return;
-          const reading = correctLegacyPh(parsed);
+          const corrected = correctLegacyPh(parsed);
+          const reading = {
+            ...corrected,
+            ph: Math.round(rollingMedian(phWindowRef.current, corrected.ph) * 100) / 100,
+            tds: Math.round(rollingMedian(tdsWindowRef.current, corrected.tds)),
+          };
           const sample: SoilSample = { ...reading, t: Date.now() };
           setLatest(reading);
           setHistory((prev) => {
