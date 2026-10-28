@@ -111,6 +111,14 @@ export default function IrrigationPage() {
 
   const tone = URGENCY_STYLE[result.urgency].tone;
   const fmt = (n: number) => n.toLocaleString(locale);
+  // Litres to 3 significant figures: the sensors aren't good to the litre on a
+  // hectare, and a live reading would otherwise keep the last digits spinning.
+  const sig3 = (n: number) => {
+    if (n < 1000) return Math.round(n);
+    const step = 10 ** (Math.floor(Math.log10(n)) - 2);
+    return Math.round(n / step) * step;
+  };
+  const fmtL = (n: number) => fmt(sig3(n));
 
   // Bar chart — 4 metrics vs. their crop bands
   const chartData = [
@@ -388,7 +396,7 @@ export default function IrrigationPage() {
                 {none ? t.noWatering : t.thisWatering}
               </p>
               <p className="mt-2 font-display text-[68px] font-semibold leading-none text-ink-900">
-                <AnimatedNumber value={none ? 0 : result.litresPerEvent} locale={locale} />
+                <AnimatedNumber value={none ? 0 : sig3(result.litresPerEvent)} locale={locale} />
               </p>
               <p className="mt-1 font-display text-base uppercase tracking-[0.2em] text-leaf-700">{t.litres}</p>
               {!none && <p className="mt-1 text-xs text-ink-500">{t.perM2(result.litresPerM2PerEvent)}</p>}
@@ -420,12 +428,12 @@ export default function IrrigationPage() {
 
               <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-md border-2 border-ink-900/10 bg-ink-900/10 text-left">
                 {[
-                  [t.m.perEvent, none ? `0 ${t.l}` : `${fmt(result.litresPerEvent)} ${t.l}`],
+                  [t.m.perEvent, none ? `0 ${t.l}` : `${fmtL(result.litresPerEvent)} ${t.l}`],
                   [t.m.events, none ? "—" : `${result.eventsNeeded}×`],
                   [t.m.between, result.hoursBetweenEvents > 0 ? `${result.hoursBetweenEvents} ${t.h}` : "—"],
                   [t.m.check, `${result.nextCheckHours} ${t.h}`],
                   [t.m.deficit, `${result.deficitPct.toFixed(1)} ${t.pp}`],
-                  [t.m.season, `${fmt(result.litres)} ${t.l}`],
+                  [t.m.season, `${fmtL(result.litres)} ${t.l}`],
                 ].map(([k, v]) => (
                   <div key={k} className="bg-white p-3">
                     <dt className="font-display text-[11px] uppercase tracking-[0.1em] text-ink-500">{k}</dt>
@@ -439,7 +447,7 @@ export default function IrrigationPage() {
                   <p className="mb-1 font-display text-sm uppercase tracking-wide text-ink-900">{t.planTitle}</p>
                   <p>
                     {t.plan(
-                      fmt(result.litresPerEvent),
+                      fmtL(result.litresPerEvent),
                       result.litresPerM2PerEvent,
                       result.hoursBetweenEvents,
                       result.eventsNeeded - 1,

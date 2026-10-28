@@ -69,9 +69,9 @@ const correctLegacyPh = (r: SoilReading & { fw?: unknown }): SoilReading => {
 
 /**
  * The pH probe is high-impedance and the ESP32 ADC picks up Wi-Fi noise, so
- * consecutive readings of a probe sitting still jump by ±0.2 pH; TDS jitters
- * the same way. A median of the last 25 readings (5 s at the board's 5 Hz
- * broadcast) drops the spikes; pH and salinity drift far slower than that.
+ * consecutive readings of a probe sitting still jump by ±0.2 pH; TDS and
+ * moisture jitter the same way. A median of the last 25 readings (5 s at the board's 5 Hz
+ * broadcast) drops the spikes; soil drifts far slower than that.
  */
 const MEDIAN_OF = 25;
 
@@ -108,6 +108,7 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
   const shouldRunRef = useRef(autoConnect);
   const phWindowRef = useRef<number[]>([]);
   const tdsWindowRef = useRef<number[]>([]);
+  const moistWindowRef = useRef<number[]>([]);
 
   const clearRetry = () => {
     if (retryTimerRef.current) {
@@ -145,6 +146,7 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
         setHistory([]);
         phWindowRef.current = [];
         tdsWindowRef.current = [];
+        moistWindowRef.current = [];
       }
       hostRef.current = hostIp;
 
@@ -179,6 +181,7 @@ export function useSoilSocket(ip: string, opts: Options = {}) {
             ...corrected,
             ph: Math.round(rollingMedian(phWindowRef.current, corrected.ph) * 100) / 100,
             tds: Math.round(rollingMedian(tdsWindowRef.current, corrected.tds)),
+            moist: Math.round(rollingMedian(moistWindowRef.current, corrected.moist)),
           };
           const sample: SoilSample = { ...reading, t: Date.now() };
           setLatest(reading);
