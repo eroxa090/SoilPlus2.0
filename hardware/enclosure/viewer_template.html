@@ -1,0 +1,329 @@
+<title>SoilPlus Колышек</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: технический лист — 3D-вид на всю ширину, под ним три колонки (печать / крепёж / сборка) */
+:root {
+  --bg: #f2f4f0;
+  --panel: #ffffff;
+  --ink: #17201a;
+  --muted: #5d6a60;
+  --line: #d5dbd3;
+  --accent: #1f6f43;
+  --brass: #a8741f;
+  --warn: #b4441f;
+  --stage: #e6eae3;
+  --f-body: "Golos Text", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1411; --panel: #161d18; --ink: #e2e9e2; --muted: #93a197; --line: #2a352d;
+    --accent: #52c486; --brass: #d9a24a; --warn: #f07a52; --stage: #1a221c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1411; --panel: #161d18; --ink: #e2e9e2; --muted: #93a197; --line: #2a352d;
+  --accent: #52c486; --brass: #d9a24a; --warn: #f07a52; --stage: #1a221c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.05; margin: 0; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.sub { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+.specs { display: flex; flex-wrap: wrap; gap: 8px; font-family: var(--f-mono); font-size: 12.5px; }
+.specs div { border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; background: var(--panel); white-space: nowrap; }
+.specs b { font-weight: 600; color: var(--accent); }
+
+.stage { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  height: min(68vh, 620px); min-height: 380px; }
+#c { width: 100%; height: 100%; display: block; touch-action: none; }
+.bar { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; pointer-events: none; }
+.bar > * { pointer-events: auto; }
+.seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; }
+.seg button { font: 500 13px var(--f-body); color: var(--ink); background: transparent; border: 0; border-radius: 6px; padding: 6px 11px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--panel); }
+.seg button:focus-visible, .chk input:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.chk { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
+.cut { display: inline-flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 13px; }
+.cut input { width: 140px; accent-color: var(--accent); }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12.5px; padding: 4px 8px; border-radius: 5px; white-space: nowrap; transform: translate(12px, 12px); }
+.hint { position: absolute; left: 12px; bottom: 10px; right: 12px; color: var(--muted); font-size: 12px; pointer-events: none; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; }
+
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 12px; color: var(--muted); font-weight: 600; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+td { padding: 7px 0; border-top: 1px solid var(--line); vertical-align: top; }
+tr:first-child td { border-top: 0; }
+td.n { font-family: var(--f-mono); font-size: 12px; color: var(--muted); white-space: nowrap; padding-left: 10px; text-align: right; font-variant-numeric: tabular-nums; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: 0; }
+.how { display: block; color: var(--muted); font-size: 12.5px; }
+ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+ol li::marker { color: var(--accent); font-weight: 600; }
+.note { border-left: 3px solid var(--warn); padding: 2px 0 2px 10px; font-size: 13.5px; margin-top: 12px; }
+.mono { font-family: var(--f-mono); font-size: 12.5px; }
+.brass { color: var(--brass); font-weight: 600; }
+ul.plain { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>SoilPlus <span>колышек</span></h1>
+      <p class="sub">Голова с выдвижным двухъярусным лотком, ствол из двух половин и игла для глубокого полива. Серым и цветным показаны макеты модулей: по ним проверены зазоры.</p>
+    </div>
+    <div class="specs">
+      <div>голова <b>132×98×64</b> мм</div>
+      <div>глубина <b>10 см</b></div>
+      <div>деталей <b>6</b></div>
+      <div>стол <b>≤180</b> мм</div>
+      <div>поддержки <b>нет</b></div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <canvas id="c" aria-label="3D-модель корпуса SoilPlus"></canvas>
+    <div class="loading" id="loading">Загружаю модель…</div>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Вид">
+        <button id="v-asm" aria-pressed="true">Собрано</button>
+        <button id="v-exp" aria-pressed="false">Разнесено</button>
+        <button id="v-tray" aria-pressed="false">Лоток выдвинут</button>
+        <button id="v-glass" aria-pressed="false">Сквозь корпус</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="t-mods" checked> Модули</label>
+      <label class="chk"><input type="checkbox" id="t-soil" checked> Почва</label>
+      <label class="cut"><input type="checkbox" id="t-cut"> Разрез <input type="range" id="cutx" min="-70" max="70" value="-10" aria-label="Положение разреза, мм"></label>
+    </div>
+    <div class="tip" id="tip" hidden></div>
+    <div class="hint">Вращать — левой кнопкой или пальцем, двигать — правой, масштаб — колесом. Наведи на деталь, чтобы увидеть название.</div>
+  </div>
+
+  <div class="cols">
+    <section>
+      <h2>Печать — 6 деталей, PETG</h2>
+      <table id="parts"></table>
+      <p class="note">Слой 0.2, стенки 6 периметров (2.4 мм), заполнение 25–30 %. Все детали без поддержек, если класть их так, как написано серым.</p>
+    </section>
+    <section>
+      <h2>Крепёж</h2>
+      <table>
+        <tr><td><span class="brass">Вставки M3</span> (отв. Ø4.0, глуб. 6)</td><td class="n">16 шт</td></tr>
+        <tr><td>M3×8, полукруглая головка<span class="how">передняя панель → фланец головы</span></td><td class="n">4 шт</td></tr>
+        <tr><td>M3×8, потай<span class="how">палуба → стойки лотка</span></td><td class="n">4 шт</td></tr>
+        <tr><td>M3×6, потай<span class="how">колышек → голова, изнутри</span></td><td class="n">4 шт</td></tr>
+        <tr><td>M3×16, любая головка<span class="how">половины колышка</span></td><td class="n">4 шт</td></tr>
+        <tr><td>Штифт Ø3×8 (гвоздь, пруток)<span class="how">центровка половин колышка</span></td><td class="n">3 шт</td></tr>
+        <tr><td>Шнур уплотнителя Ø2<span class="how">канавка на панели, П-образно</span></td><td class="n">~30 см</td></tr>
+      </table>
+      <p class="note">Потайные M3 и шнур Ø2 добавь в список покупок, если их нет.</p>
+    </section>
+    <section>
+      <h2>Сборка</h2>
+      <ol>
+        <li>Вплавь все вставки паяльником (~220 °C) до установки электроники.</li>
+        <li>Колышек: датчик влажности (электронику покрыть лаком) в щель, DS18B20 и щуп TDS в отверстия дна, иглу с трубкой в гнездо. Кабели вверх. Закрой половины, 4 винта, низ промажь силиконом.</li>
+        <li>Прикрути колышек к голове: 4 потайных винта изнутри.</li>
+        <li>Ярус 1 на столе: аккумулятор на стяжку, TP4056, тумблер в панель, два MT3608 (сначала выставь 5.0 В), D4184, конденсатор.</li>
+        <li>Палуба: перфоплата с ESP32 въезжает сзади в направляющие до упора. pH-плата — BNC в отверстие панели. TDS-плата сзади справа. Провода через прорези, палубу на 4 винта.</li>
+        <li>В кабельном отсеке подключи JST датчиков и BMP280, задвинь лоток, затяни 4 винта панели.</li>
+      </ol>
+    </section>
+  </div>
+
+  <section>
+    <h2>Размеры взяты типовые — проверь, когда придут детали</h2>
+    <ul class="plain">
+      <li><b>ESP32</b> 51.5×28.5: разъём Type-C должен оказаться на переднем краю перфоплаты, иначе он не совпадёт с окном панели. Гребёнки паяй так, чтобы плата ESP32 выступала вперёд на ~0.7 мм.</li>
+      <li><b>D4184</b> заложен самый большой вариант (35×16). Если придёт маленький (23×16), он просто встанет в гнездо с запасом.</li>
+      <li><b>Тумблер KCD1</b>: вырез 19.2×13.2. Бывают 21×15 — тогда поменяй одно число в скрипте.</li>
+      <li><b>Щуп TDS</b>: диаметр в паспортах не указан, заложено Ø12. Если другой, меняется одно число.</li>
+      <li><b>Трубка</b> 6×8 мм под ёлочку иглы. Сначала купи насос, потом трубку под его штуцер.</li>
+    </ul>
+  </section>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const GLB_B64 = "__GLB_B64__";
+const REPORT = __REPORT__;
+
+const RU = {
+  "1_Head": "Голова", "2_Tray_Panel": "Лоток + передняя панель", "3_Deck": "Палуба (2 ярус)",
+  "4_Stake_Front": "Колышек, передняя половина", "5_Stake_Back": "Колышек, задняя половина", "6_Water_Spike": "Игла полива",
+  "dummy_ESP32_DevKit": "ESP32 DevKit (30 pin)", "dummy_Perfboard_5x7": "Перфоплата 5×7", "dummy_Female_Headers": "Гребёнки «мама»",
+  "dummy_JST_XH": "Разъёмы JST-XH датчиков", "dummy_TP4056": "TP4056 — зарядка Type-C", "dummy_MT3608_1": "MT3608 — 5 В для ESP32",
+  "dummy_MT3608_2": "MT3608 — 5 В для насоса", "dummy_D4184": "D4184 — ключ насоса", "dummy_Battery_103450": "Аккумулятор 103450",
+  "dummy_Cap_1000uF": "Конденсатор 1000 мкФ", "dummy_Switch_KCD1": "Тумблер KCD1", "dummy_pH_4502C": "pH-4502C (BNC в панели)",
+  "dummy_TDS_v1": "Плата TDS v1.0", "dummy_BMP280": "BMP280 в кармане с жалюзи", "dummy_Moisture_v1_2": "Датчик влажности v1.2",
+  "dummy_DS18B20": "DS18B20", "dummy_TDS_Probe": "Щуп TDS",
+};
+const PRINT_HOW = {
+  "Голова": "задней стенкой на стол", "Лоток + панель": "полом на стол", "Палуба (2 ярус)": "плашмя",
+  "Колышек перед": "плоскостью разъёма на стол", "Колышек зад": "плоскостью разъёма на стол", "Игла полива": "ёлочкой вниз, стоя",
+};
+const PART_COLOR = { "Голова": "#1f6f43", "Лоток + панель": "#c9c9c9", "Палуба (2 ярус)": "#9e9e9e",
+  "Колышек перед": "#7a5230", "Колышек зад": "#8d6239", "Игла полива": "#2b7bd1" };
+
+// таблица деталей
+const tb = document.getElementById("parts");
+for (const [name, r] of Object.entries(REPORT.parts)) {
+  const tr = document.createElement("tr");
+  const s = r.size_print_mm.map(v => Math.round(v)).join("×");
+  tr.innerHTML = `<td><span class="sw" style="background:${PART_COLOR[name]}"></span>${name}<span class="how">${PRINT_HOW[name]}</span></td><td class="n">${s} мм<br>${r.volume_cm3} см³</td>`;
+  tb.appendChild(tr);
+}
+
+// группы для «разнесённого» вида, смещения в мм (оси модели: x вправо, y вглубь, z вверх)
+const TRAY = ["2_Tray_Panel", "dummy_Battery_103450", "dummy_TP4056", "dummy_MT3608_1", "dummy_MT3608_2", "dummy_D4184", "dummy_Cap_1000uF", "dummy_Switch_KCD1"];
+const DECK = ["3_Deck", "dummy_Perfboard_5x7", "dummy_Female_Headers", "dummy_ESP32_DevKit", "dummy_JST_XH", "dummy_pH_4502C", "dummy_TDS_v1"];
+const EXPLODE = {}; const TRAY_OUT = {};
+TRAY.forEach(n => { EXPLODE[n] = [0, -150, 0]; TRAY_OUT[n] = [0, -85, 0]; });
+DECK.forEach(n => { EXPLODE[n] = [0, -150, 55]; TRAY_OUT[n] = [0, -85, 0]; });
+Object.assign(EXPLODE, {
+  "4_Stake_Front": [0, -45, -40], "5_Stake_Back": [0, 45, -40], "6_Water_Spike": [0, 75, -70],
+  "dummy_Moisture_v1_2": [0, 0, -55], "dummy_DS18B20": [0, -25, -55], "dummy_TDS_Probe": [0, 0, -55],
+  "dummy_BMP280": [-30, 0, 0],
+});
+
+const canvas = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.localClippingEnabled = true;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1, 0.001, 10);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x445544, 1.6));
+const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(0.4, 0.8, 0.6); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.6); fill.position.set(-0.6, 0.2, -0.4); scene.add(fill);
+
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function applyBg() { scene.background = new THREE.Color(cssVar("--stage") || "#e6eae3"); }
+applyBg();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyBg);
+new MutationObserver(applyBg).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+const cutPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0);
+const nodes = {}; let root;
+const anims = [];
+
+// почва: полупрозрачный блок ниже уровня земли (z = -41 мм в модели)
+const soil = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.22),
+  new THREE.MeshStandardMaterial({ color: 0x6b4a2b, transparent: true, opacity: 0.22, depthWrite: false }));
+soil.position.set(0, -0.041 - 0.08, -0.078);
+scene.add(soil);
+const grass = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.22),
+  new THREE.MeshStandardMaterial({ color: 0x3f7d3a, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false }));
+grass.rotation.x = -Math.PI / 2; grass.position.set(0, -0.041, -0.078); scene.add(grass);
+
+const bytes = Uint8Array.from(atob(GLB_B64), c => c.charCodeAt(0));
+new GLTFLoader().parse(bytes.buffer, "", gltf => {
+  root = gltf.scene;
+  root.traverse(o => {
+    if (o.isMesh) {
+      o.material = o.material.clone();
+      o.material.side = THREE.DoubleSide;
+      o.material.metalness = 0.05; o.material.roughness = 0.75;
+    }
+    if (o.name && RU[o.name] !== undefined) { nodes[o.name] = o; o.userData.home = o.position.clone(); }
+  });
+  scene.add(root);
+  frame();
+  document.getElementById("loading").hidden = true;
+}, err => { document.getElementById("loading").textContent = "Не удалось загрузить модель: " + err.message; });
+
+function frame() {
+  const box = new THREE.Box3().setFromObject(root);
+  const c = box.getCenter(new THREE.Vector3()); const size = box.getSize(new THREE.Vector3()).length();
+  controls.target.copy(c);
+  camera.position.copy(c).add(new THREE.Vector3(0.55, 0.38, 0.75).multiplyScalar(size * 0.95));
+  controls.update();
+}
+
+function setMode(mode) {
+  for (const id of ["v-asm", "v-exp", "v-tray", "v-glass"]) document.getElementById(id).setAttribute("aria-pressed", String(id === "v-" + mode));
+  for (const [name, o] of Object.entries(nodes)) {
+    const off = mode === "exp" ? EXPLODE[name] : mode === "tray" ? TRAY_OUT[name] : null;
+    const to = o.userData.home.clone();
+    if (off) to.add(new THREE.Vector3(off[0], off[1], off[2]).multiplyScalar(0.001));
+    anims.push({ o, from: o.position.clone(), to, t: 0 });
+  }
+  const head = nodes["1_Head"];
+  if (head) {
+    head.traverse(m => { if (m.isMesh) { m.material.transparent = mode === "glass"; m.material.opacity = mode === "glass" ? 0.18 : 1; m.material.depthWrite = mode !== "glass"; } });
+  }
+}
+document.getElementById("v-asm").onclick = () => setMode("asm");
+document.getElementById("v-exp").onclick = () => setMode("exp");
+document.getElementById("v-tray").onclick = () => setMode("tray");
+document.getElementById("v-glass").onclick = () => setMode("glass");
+document.getElementById("t-mods").onchange = e => { for (const [n, o] of Object.entries(nodes)) if (n.startsWith("dummy_")) o.visible = e.target.checked; };
+document.getElementById("t-soil").onchange = e => { soil.visible = grass.visible = e.target.checked; };
+function applyCut() {
+  const on = document.getElementById("t-cut").checked;
+  cutPlane.constant = Number(document.getElementById("cutx").value) / 1000;
+  if (root) root.traverse(m => { if (m.isMesh) m.material.clippingPlanes = on ? [cutPlane] : []; });
+}
+document.getElementById("t-cut").onchange = applyCut;
+document.getElementById("cutx").oninput = applyCut;
+
+// подсказка с названием детали
+const ray = new THREE.Raycaster(); const ptr = new THREE.Vector2(); const tip = document.getElementById("tip");
+canvas.addEventListener("pointermove", e => {
+  if (!root) return;
+  const r = canvas.getBoundingClientRect();
+  ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hits = ray.intersectObject(root, true).filter(h => {
+    if (!h.object.visible) return false;
+    if (document.getElementById("t-cut").checked && cutPlane.distanceToPoint(h.point) < 0) return false;
+    let o = h.object; while (o && !RU[o.name]) o = o.parent;
+    return o && !(o.name === "1_Head" && document.getElementById("v-glass").getAttribute("aria-pressed") === "true");
+  });
+  if (!hits.length) { tip.hidden = true; return; }
+  let o = hits[0].object; while (o && !RU[o.name]) o = o.parent;
+  tip.textContent = RU[o.name] + (o.name.startsWith("dummy_") ? " · макет" : "");
+  tip.style.left = (e.clientX - r.left) + "px"; tip.style.top = (e.clientY - r.top) + "px"; tip.hidden = false;
+});
+canvas.addEventListener("pointerleave", () => { tip.hidden = true; });
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) {
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+}
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let last = performance.now();
+renderer.setAnimationLoop(now => {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  for (let i = anims.length - 1; i >= 0; i--) {
+    const a = anims[i]; a.t = reduce ? 1 : Math.min(1, a.t + dt * 2.2);
+    const k = 1 - Math.pow(1 - a.t, 3);
+    a.o.position.lerpVectors(a.from, a.to, k);
+    if (a.t >= 1) anims.splice(i, 1);
+  }
+  resize(); controls.update(); renderer.render(scene, camera);
+});
+</script>
