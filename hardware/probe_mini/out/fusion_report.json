@@ -1,0 +1,137 @@
+{
+  "seconds": 88.3,
+  "fails": [],
+  "clashes": [],
+  "print_sizes_sorted_mm": {
+    "1_Body": [
+      45.0,
+      95.0,
+      111.0
+    ],
+    "2_Lid": [
+      26.9,
+      95.0,
+      108.0
+    ],
+    "3_Deck": [
+      9.0,
+      89.6,
+      89.6
+    ],
+    "10_Back_Frame": [
+      12.8,
+      89.6,
+      89.6
+    ],
+    "4_Handle": [
+      24.0,
+      50.0,
+      120.0
+    ],
+    "5_Sensor_Head": [
+      55.6,
+      70.0,
+      120.0
+    ],
+    "6_Blade_Guard": [
+      6.0,
+      39.2,
+      107.1
+    ],
+    "8a_Clamp_Center": [
+      7.5,
+      20.8,
+      40.0
+    ],
+    "8b_Clamp_DS": [
+      9.0,
+      20.0,
+      20.8
+    ],
+    "8c_Clamp_TDS": [
+      9.0,
+      20.0,
+      20.8
+    ],
+    "11_DS_Guard": [
+      13.5,
+      13.5,
+      52.0
+    ],
+    "12_Electrode_Cap_Holder": [
+      22.0,
+      29.6,
+      40.0
+    ],
+    "13_Electrode_Clip": [
+      12.0,
+      22.6,
+      40.0
+    ],
+    "7_Cap": [
+      19.2,
+      79.6,
+      83.2
+    ],
+    "16_Plug_TypeC_Charge": [
+      3.6,
+      10.5,
+      21.5
+    ],
+    "17_Plug_TypeC_ESP32": [
+      3.6,
+      10.7,
+      23.0
+    ]
+  },
+  "fits_180": {
+    "1_Body": true,
+    "2_Lid": true,
+    "3_Deck": true,
+    "10_Back_Frame": true,
+    "4_Handle": true,
+    "5_Sensor_Head": true,
+    "6_Blade_Guard": true,
+    "8a_Clamp_Center": true,
+    "8b_Clamp_DS": true,
+    "8c_Clamp_TDS": true,
+    "11_DS_Guard": true,
+    "12_Electrode_Cap_Holder": true,
+    "13_Electrode_Clip": true,
+    "7_Cap": true,
+    "16_Plug_TypeC_Charge": true,
+    "17_Plug_TypeC_ESP32": true
+  },
+  "shots": [
+    "1_iso.png",
+    "2_front.png",
+    "3_open.png",
+    "4_no_deck.png",
+    "5_bottom.png",
+    "6_left_ports.png",
+    "7_right_ports.png",
+    "8_cap.png"
+  ],
+  "log": [
+    "18:08:07 design intent: 2, up: 1",
+    "18:08:12 body      4.8 s",
+    "18:08:14 lid       2.4 s",
+    "18:08:18 deck      3.8 s",
+    "18:08:23 frame     4.9 s",
+    "18:08:26 handle    2.9 s",
+    "18:08:39 head      13.1 s",
+    "18:08:40 fork      1.2 s",
+    "18:08:44 clamp     3.8 s",
+    "18:08:47 clamp_ds  2.4 s",
+    "18:08:49 clamp_tds 2.1 s",
+    "18:08:52 ds_guard  2.9 s",
+    "18:08:55 electrode_clip 3.0 s",
+    "18:08:58 electrode_clip_top 3.1 s",
+    "18:09:01 cap       2.9 s",
+    "18:09:03 plug_tp   1.9 s",
+    "18:09:05 plug_esp  1.8 s",
+    "18:09:28 modules   23.1 s",
+    "18:09:31 joints: 16",
+    "18:09:32 interference: 0"
+  ]
+}

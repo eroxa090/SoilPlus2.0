@@ -1,0 +1,10 @@
+{
+  "autodeskProduct": "Fusion",
+  "type": "script",
+  "author": "SoilPlus",
+  "description": {
+    "": "SoilPlus Mini: короткий ручной щуп — блок, ручка, горловина с юбкой, вилка, колпачок, макеты модулей"
+  },
+  "supportedOS": "windows|mac",
+  "editEnabled": true
+}
