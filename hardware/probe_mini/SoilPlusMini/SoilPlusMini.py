@@ -23,7 +23,10 @@ import traceback
 # =============================================================================
 CLR = 0.3                  # зазор посадки на сторону для всего, что вставляется или скользит
 SCR, CB_D = 3.6, 6.2       # проход M3 (3.0 + 2*CLR) / головка M3 5.5 + зазор
-INS_D, INS_H = 4.0, 8.0    # латунная вставка M3 (отверстие / глубина)
+PILOT_D, PILOT_H = 2.5, 8.0  # винт M3 вкручивается прямо в пластик (отверстие / глубина)
+# паз под платы 1.6 мм. Тест: туго входит в паз 1.7. В панели паз лежит поперёк слоёв,
+# поэтому взято 1.8 = 9 слоёв по 0.2 (края пазов на границах слоёв), верх паза чуть провисает
+PCB_SLOT = 1.8
 
 # блок: наружные полуразмеры и высоты
 BX, IX = 47.5, 45.1        # наружная / внутренняя полуширина
@@ -315,11 +318,11 @@ def build_body():
     for sx, zc in EARS:
         p.prism("z", zc - 4, zc + 4, lambda d, sx=sx: d.poly(
             [(sx * 46.5, YO), (sx * 54, YO), (sx * 54, 5), (sx * 46.5, 12.5)]), "join", "ear")
-        p.cyl("y", sx * 50.75, zc, YO - 0.1, YO + INS_H, INS_D, "cut", "lid_insert")
+        p.cyl("y", sx * 50.75, zc, YO - 0.1, YO + PILOT_H, PILOT_D, "cut", "lid_pilot")
     # стойки панели
     for x, z in BOSSES:
         p.cyl("y", x, z, FRAME_Y1, YBI + 0.01, 8, "join", "boss")
-        p.cyl("y", x, z, FRAME_Y1 - 0.1, FRAME_Y1 + INS_H, INS_D, "cut", "boss_insert")
+        p.cyl("y", x, z, FRAME_Y1 - 0.1, FRAME_Y1 + PILOT_H, PILOT_D, "cut", "boss_pilot")
     # задний ярус: гнёзда прямо на задней стенке
     w = lambda x0, x1, z0, z1, h=4.0: p.box(x0, x1, YBI - h, YBI + 0.01, z0, z1, "join", "pocket")
     pad = lambda x0, x1, z0, z1: p.box(x0, x1, YBI - 1.5, YBI + 0.01, z0, z1, "join", "pad")
@@ -358,7 +361,7 @@ def build_body():
     p.box(-14, 14, -13, 3, Z0 - 1, IZ0 + 1, "cut", "cable_hole")
     for sx in (-1, 1):                       # бобышки верхней клипсы электрода на задней стенке
         p.cyl("y", sx * 16, 142, YBI - 6, YBI + 0.01, 9, "join", "clip_boss")
-        p.cyl("y", sx * 16, 142, YB - INS_H, YB + 0.1, INS_D, "cut", "clip_insert")
+        p.cyl("y", sx * 16, 142, YB - PILOT_H, YB + 0.1, PILOT_D, "cut", "clip_pilot")
     p.cyl("z", 25, 16.8, Z0 - 0.1, IZ0 + 0.1, 2.0 + 2 * CLR, "cut", "key_hole")     # ключ: горловина ставится только одной стороной
     for x, y in HEAD_SCREWS:
         p.cyl("z", x, y, Z0 - 0.1, IZ0 + 0.1, SCR, "cut", "head_screw")
@@ -414,16 +417,16 @@ def build_deck():
         p.box(sx * 8, sx * 36, y0 - 1, y1 + 1, 62, 84, "cut", "window")
     # перфоплата 50x70: вставляется справа в направляющие до упора
     p.box(-36, 33, -3.4, y0 + 0.01, 91.2, 94.8, "join", "rail_low")
-    p.box(-37, 34, -2.4 - CLR, -0.8 + CLR, 94.0 - CLR, 94.81, "cut", "groove_low")
+    p.box(-37, 34, -2.4, -2.4 + PCB_SLOT, 94.0 - CLR, 94.81, "cut", "groove_low")
     p.box(-36, 33, -3.4, y0 + 0.01, 143.2, 146.0, "join", "rail_top")
-    p.box(-37, 34, -2.4 - CLR, -0.8 + CLR, 143.19, 144.0 + CLR, "cut", "groove_top")
+    p.box(-37, 34, -2.4, -2.4 + PCB_SLOT, 143.19, 144.0 + CLR, "cut", "groove_top")
     p.box(-40.5, -39.0 - CLR, -2.4, y0 + 0.01, 96.9, 100, "join", "stop")
     # платы pH и TDS: въезжают в общий паз с краёв до центрального упора,
     # с внешней стороны их запирает стенка корпуса
     p.box(-40, 40, -3.0, y0 + 0.01, 57.0, 59.6, "join", "board_rail_low")
-    p.box(-41, 41, -1.4 - CLR, 0.2 + CLR, 58.5 - CLR, 59.61, "cut", "board_groove_low")
+    p.box(-41, 41, 0.2 - PCB_SLOT, 0.2, 58.5 - CLR, 59.61, "cut", "board_groove_low")
     p.box(-37, 37, -3.0, y0 + 0.01, 89.4, 92.0, "join", "board_rail_top")
-    p.box(-38, 38, -1.4 - CLR, 0.2 + CLR, 89.39, 90.5 + CLR, "cut", "board_groove_top")
+    p.box(-38, 38, 0.2 - PCB_SLOT, 0.2, 89.39, 90.5 + CLR, "cut", "board_groove_top")
     p.box(-2.5 + CLR, 3.5 - CLR, -3.0, y0 + 0.01, 57.0, 92.0, "join", "center_stop")   # pH 41 мм, TDS 42 мм
     deck_common(p, y0, y1)
     return p
@@ -467,7 +470,7 @@ def build_handle():
     p.prism("y", -8, 8, lambda d: d.rrect(-52, 179, 52, 195, 6), "cut", "hollow_bar")
     p.box(-11, 11, -8, 8, 153, 179.5, "cut", "hollow_post")
     for x, y in GRIP_SCREWS:
-        p.cyl("z", x, y, Z1 - 0.1, Z1 + INS_H, INS_D, "cut", "insert")
+        p.cyl("z", x, y, Z1 - 0.1, Z1 + PILOT_H, PILOT_D, "cut", "pilot")
     return p
 
 
@@ -483,14 +486,14 @@ def build_head():
             p.box(x - 1.2, x + 1.2, s * 17, s * 33, 3.1, 11, "join", "rib")
     for s in (1, -1):
         p.box(s * 43, s * 58, -1.2, 1.2, 3.1, 11, "join", "rib")
-    for x, y in HEAD_SCREWS:                 # колонны со вставками, на них стоит блок
+    for x, y in HEAD_SCREWS:                 # колонны под винты, на них стоит блок
         sy = 1 if y > 0 else -1
         p.box(x - 4, x + 4, sy * 8.5, sy * 16.5, 2.9, Z0, "join", "column")
-        p.cyl("z", x, y, Z0 - INS_H, Z0 + 0.1, INS_D, "cut", "insert")
+        p.cyl("z", x, y, Z0 - PILOT_H, Z0 + 0.1, PILOT_D, "cut", "pilot")
     # площадки под винты клипсы электрода (снизу скос 45° — печать без поддержек)
     for sx in (-1, 1):
         p.prism("x", sx * 12, sx * 20, lambda d: d.poly([(15.7, 27), (15.7, 44), (9, 44), (9, 34)]), "join", "clip_pad")
-        p.cyl("y", sx * 16, 39, 10, 18.1, INS_D, "cut", "clip_insert")
+        p.cyl("y", sx * 16, 39, 10, 18.1, PILOT_D, "cut", "clip_pilot")
     # отверстия в дне
     p.box(-16 - CLR, 16 + CLR, -3 - CLR, 3 + CLR, -1, 3.1, "cut", "blade_slot")
     p.cyl("z", DS_X, 0, -1, 3.1, 11 + 2 * CLR, "cut", "ds_guard_hole")
@@ -501,7 +504,7 @@ def build_head():
     for sx in (-1, 1):
         p.box(sx * 38.95, sx * 40.8, -1.4, 0.01, 2.8, JAW_Z + 0.1, "cut", "hinge_seat")
     for x, z in CLAMP_SCREWS:
-        p.cyl("y", x, z, -8.1, -3, INS_D, "cut", "jaw_insert")
+        p.cyl("y", x, z, -8.1, -3, PILOT_D, "cut", "jaw_pilot")
         p.cyl("y", x, z, 15, 19, 7, "cut", "tool_access")                # доступ отвёрткой сзади
     return p
 

@@ -1,5 +1,5 @@
 {
-  "seconds": 88.3,
+  "seconds": 90.1,
   "fails": [],
   "clashes": [],
   "print_sizes_sorted_mm": {
@@ -113,25 +113,25 @@
     "8_cap.png"
   ],
   "log": [
-    "18:08:07 design intent: 2, up: 1",
-    "18:08:12 body      4.8 s",
-    "18:08:14 lid       2.4 s",
-    "18:08:18 deck      3.8 s",
-    "18:08:23 frame     4.9 s",
-    "18:08:26 handle    2.9 s",
-    "18:08:39 head      13.1 s",
-    "18:08:40 fork      1.2 s",
-    "18:08:44 clamp     3.8 s",
-    "18:08:47 clamp_ds  2.4 s",
-    "18:08:49 clamp_tds 2.1 s",
-    "18:08:52 ds_guard  2.9 s",
-    "18:08:55 electrode_clip 3.0 s",
-    "18:08:58 electrode_clip_top 3.1 s",
-    "18:09:01 cap       2.9 s",
-    "18:09:03 plug_tp   1.9 s",
-    "18:09:05 plug_esp  1.8 s",
-    "18:09:28 modules   23.1 s",
-    "18:09:31 joints: 16",
-    "18:09:32 interference: 0"
+    "17:51:00 design intent: 2, up: 1",
+    "17:51:05 body      4.8 s",
+    "17:51:07 lid       2.7 s",
+    "17:51:11 deck      3.8 s",
+    "17:51:16 frame     4.9 s",
+    "17:51:19 handle    2.9 s",
+    "17:51:32 head      13.0 s",
+    "17:51:34 fork      1.2 s",
+    "17:51:37 clamp     3.7 s",
+    "17:51:40 clamp_ds  2.5 s",
+    "17:51:42 clamp_tds 2.2 s",
+    "17:51:45 ds_guard  3.1 s",
+    "17:51:49 electrode_clip 3.1 s",
+    "17:51:52 electrode_clip_top 3.1 s",
+    "17:51:55 cap       3.0 s",
+    "17:51:57 plug_tp   1.9 s",
+    "17:51:59 plug_esp  1.8 s",
+    "17:52:21 modules   22.9 s",
+    "17:52:25 joints: 16",
+    "17:52:25 interference: 0"
   ]
 }
